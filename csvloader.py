@@ -118,12 +118,13 @@ with open('traindata.csv') as f:
             date = row[7]
         midclass = row[3]
         if (midclass in dailyData):
-            dailyData[midclass][0] = dailyData[midclass][0]+float(row[13])
-            totalCount=totalCount+float(row[13])
+            #float(row[13]) or 1
+            dailyData[midclass][0] = dailyData[midclass][0]+1
+            totalCount=totalCount+1
             totalPay=totalPay+float(row[14])
         else:
-            dailyData[midclass] = [float(row[13]), 0]
-            totalCount=totalCount+float(row[13])
+            dailyData[midclass] = [1, 0]
+            totalCount=totalCount+1
             totalPay=totalPay+float(row[14])
         if (row[16]!='\xb7\xf1'):
             dailyData[midclass][1] = 1
