@@ -7,11 +7,15 @@ Created on Tue Oct 24 18:48:57 2017
 
 import csv
 
+DictHoilday = [1,2,3,48,49,50,51,52,53,54,94]
+DictBeforeHoilday = [45,46,47]
+midClasses = {}
+
 date = '20150101'
 dailyData = {}
-# index       -0          -1          -2
-# middle class-sales count-sales money-promotions
-# string      -float      -float      -int
+# index       -0          -1          
+# middle class-sales count-promotions
+# string      -float      -int     
 promotions = []
 totalCount = 0
 totalPay = 0
@@ -19,7 +23,7 @@ lineNum = 1
 dayCount = 1
 
 def writeData():
-    global date, dailyData, promotions, totalCount, totalPay, dayCount
+    global dailyData, promotions, totalCount, totalPay, dayCount
     day = int(date) % 100
     month = int(date) / 100 % 100
     if (month==1):
@@ -32,11 +36,21 @@ def writeData():
         week = (day + 2) % 7
     else :
         raise Exception("unknown month")
-    if (week==0 or week==6):
+    if (dayCount in DictHoilday):
         holiday = 1
+        beforeHoliday = 0
+    elif (dayCount in DictBeforeHoilday):
+        holiday = 0
+        beforeHoliday = 1
+    elif (week==0 or week==6):
+        holiday = 1
+        beforeHoliday = 0
+    elif (week==5):
+        holiday = 0
+        beforeHoliday = 1
     else:
         holiday = 0
-        #mark by hand
+        beforeHoliday = 1
     promotionClass = {}
     for midclass in promotions:
         larclass = int(midclass)/100
@@ -47,28 +61,52 @@ def writeData():
     with open('output.csv', 'ab') as f:
         writer = csv.writer(f)
         for midclass in dailyData:
+            if (midclass not in midClasses):
+                continue
+            else:
+                midClasses[midclass] = 1
             try:
                 larclass = int(midclass) / 100
                 if (larclass in promotionClass):
-                    writer.writerow([midclass, month, dayCount,
-                                     day, week, holiday, dailyData[midclass][2],
-                                     dailyData[midclass][1]/dailyData[midclass][0],
-                                     promotionClass[larclass]-dailyData[midclass][2],
+                    writer.writerow([midclass, dayCount, month, 
+                                     day, week, beforeHoliday, holiday, 
+                                     dailyData[midclass][1],
+                                     promotionClass[larclass]-dailyData[midclass][1],
                                      totalCount, totalPay, dailyData[midclass][0]])
                 else:
-                    writer.writerow([midclass, month, dayCount,
-                                     day, week, holiday, 0,
-                                     dailyData[midclass][1]/dailyData[midclass][0],
-                                     0,
+                    writer.writerow([midclass, dayCount, month,
+                                     day, week, beforeHoliday, holiday, 
+                                     0, 0,
                                      totalCount, totalPay, dailyData[midclass][0]]) 
             except ZeroDivisionError:
                 pass
                 #just neglect it
+        for midclass in midClasses:
+            if (midClasses[midclass] == 0):
+                larclass = int(midclass) / 100
+                if (larclass in promotionClass):
+                    writer.writerow([midclass, month, dayCount,
+                                     day, week, beforeHoliday, holiday, 
+                                     0, promotionClass[larclass],
+                                     totalCount, totalPay, 0])
+                else:
+                    writer.writerow([midclass, month, dayCount,
+                                     day, week, beforeHoliday, holiday, 0, 0,
+                                     totalCount, totalPay, 0]) 
     dailyData = {}
     promotions = []
     totalCount = 0
     totalPay = 0
     dayCount += 1
+    for midclass in midClasses:
+        midClasses[midclass] = 0
+    
+with open('submit.csv') as f:
+    f_csv = csv.reader(f)
+    f_csv.next()
+    for row in f_csv:
+        if (int(row[0]) > 100):
+            midClasses[row[0]] = 0;
 
 with open('traindata.csv') as f:
     f_csv = csv.reader(f)
@@ -78,20 +116,19 @@ with open('traindata.csv') as f:
         if (date != row[7]):
             writeData()
             date = row[7]
-        midClassNo = row[3]
-        if (midClassNo in dailyData):
-            dailyData[midClassNo][0] = dailyData[midClassNo][0]+float(row[13])
-            dailyData[midClassNo][1] = dailyData[midClassNo][1]+float(row[14])
+        midclass = row[3]
+        if (midclass in dailyData):
+            dailyData[midclass][0] = dailyData[midclass][0]+float(row[13])
             totalCount=totalCount+float(row[13])
             totalPay=totalPay+float(row[14])
         else:
-            dailyData[midClassNo] = [float(row[13]), float(row[14]), 0]
+            dailyData[midclass] = [float(row[13]), 0]
             totalCount=totalCount+float(row[13])
             totalPay=totalPay+float(row[14])
         if (row[16]!='\xb7\xf1'):
-            dailyData[midClassNo][2] = 1
-            if (midClassNo not in promotions):
-                promotions.append(midClassNo)
+            dailyData[midclass][1] = 1
+            if (midclass not in promotions):
+                promotions.append(midclass)
     writeData();
         
         
