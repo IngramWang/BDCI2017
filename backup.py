@@ -7,6 +7,7 @@ This is a temporary script file.
 
 import xgboost as xgb
 from numpy import array
+from numpy import zeros
 import csv
 import math
 
@@ -26,6 +27,8 @@ dtIndex = [dt.datetime(2015,1,x) for x in range(1, 32)]
 dtIndex = dtIndex + [dt.datetime(2015,2,x) for x in (range(1, 29))]
 dtIndex = dtIndex + [dt.datetime(2015,3,x) for x in range(1, 32)]
 dtIndex = dtIndex + [dt.datetime(2015,4,x) for x in (range(1, 31))]
+
+modelChoose = []
 
 def getData(csvReader, trainCount, testCount):
     trainData = []
@@ -118,7 +121,7 @@ def sarimaTrain(trainLabel):
 
 def sarimaPredict(model, predictLength):
     output = model.forecast(predictLength)
-    return output
+    return array(output)
 
 def sarimaBias(model, trainLabel):
     dataLength = trainLabel.__len__()
@@ -127,27 +130,136 @@ def sarimaBias(model, trainLabel):
     data.index = pd.Index(index)
     
     pred = model.predict()
+    """
+    plt.plot(data, color='blue',label='Original')
+    plt.plot(pred, color='red', label='Predicted')
+    plt.show(block=False)
+    """
     return list(data - pred)
 
-def test(trainSize, testSize):
+def modelselect(trainSize, testSize):
     global larclasPred, larclasLabl, totalBias, totalCount   
+    larclasPred = {}
+    larclasLabl = {}
+    totalBias = 0
+    totalCount = 0
+    modelChoose = []
     f = open("data.csv", "r")
     f_csv = csv.reader(f)
     
+    teD = []
+    for i in range(31-testSize, 31):
+        x = [i, (i+2)%7, 0, 0, 0, 0]
+        if (x[1] == 6 or x[1]==0):
+            x[3] = 1
+        elif (x[1] == 5):
+            x[2] = 1
+        teD.append(x)
+            
     while (True):
-        midclass, trD, trL, teD, teL = getData(f_csv, trainSize, testSize)
+        midclass, trD, trL, _, teL = getData(f_csv, trainSize, testSize)   
         if (midclass == 0):
             break
         else:
 
+            # sarima model
             try:
                 model = sarimaTrain(trL)
-                bias = sarimaBias(model, trL)
-                #tePM = xgboostPredict(array(trD), array(bias), array(teD))
-                teP = sarimaPredict(model, testSize)
-                #teP = teP + tePM
+                teP1 = sarimaPredict(model, testSize)
             except:
-                # failed to train sariam model, just use xgboost
+                teP1 = zeros(testSize)
+            
+            # xgboost model
+            try:
+                teP2 = xgboostPredict(array(trD), array(trL), array(teD))
+            except:
+                teP2 = zeros(testSize)
+            
+            # just zero
+            teP3 = zeros(testSize)
+
+            # count bias of midclass and update larclass
+            label = array(teL)
+            larclass = int(midclass/100)
+            totalCount += testSize
+  
+            bias1 = sum((teP1-label)*(teP1-label))
+            bias2 = sum((teP2-label)*(teP2-label))
+            bias3 = sum((teP3-label)*(teP3-label))
+            if (bias3 < bias1 and bias3 < bias2):
+                totalBias += bias3
+                bias3 = math.sqrt(bias3/testSize)
+                print "(Midclass %d select ZERO, accuracy: %f)" % (midclass, bias3)
+                modelChoose.append(3)
+                if (larclass in larclasPred):
+                    larclasPred[larclass] += teP3
+                else:
+                    larclasPred[larclass] = teP3
+            elif (bias1 < bias2):
+                totalBias += bias1
+                bias1 = math.sqrt(bias1/testSize)
+                print "(Midclass %d select SARIMA, accuracy: %f)" % (midclass, bias1)
+                modelChoose.append(1)
+                if (larclass in larclasPred):
+                    larclasPred[larclass] += teP1
+                else:
+                    larclasPred[larclass] = teP1
+            else:
+                totalBias += bias2
+                bias2 = math.sqrt(bias2/testSize)
+                print "(Midclass %d select XGBOOST, accuracy: %f)" % (midclass, bias2)
+                modelChoose.append(2)
+                if (larclass in larclasPred):
+                    larclasPred[larclass] += teP2
+                else:
+                    larclasPred[larclass] = teP2
+               
+            if (larclass in larclasLabl):
+                larclasLabl[larclass] += label
+            else:
+                larclasLabl[larclass] = label
+            #dataLog(midclass, bias, trL, teP, teL)                
+   
+    # print bias of large class
+    for larclass in larclasPred:
+        bias = sum((larclasLabl[larclass] - larclasPred[larclass])*
+                   (larclasLabl[larclass] - larclasPred[larclass]))
+        totalBias += bias
+        totalCount += testSize
+        bias = math.sqrt(bias/testSize)
+        print "(Larclass %d predict finished, accuracy: %f)" % (larclass, bias)  
+        
+    totalBias = math.sqrt(totalBias/totalCount)
+    print "(Predict finished, accuracy: %f)" % (totalBias)        
+    f.close()
+ 
+def test(trainSize, testSize):
+    global larclasPred, larclasLabl, totalBias, totalCount   
+    larclasPred = {}
+    larclasLabl = {}
+    totalBias = 0
+    totalCount = 0
+    f = open("data.csv", "r")
+    f_csv = csv.reader(f)
+    
+    teD = []
+    for i in range(31-testSize, 31):
+        x = [i, (i+2)%7, 0, 0, 0, 0]
+        if (x[1] == 6 or x[1]==0):
+            x[3] = 1
+        elif (x[1] == 5):
+            x[2] = 1
+        teD.append(x)
+    
+    while (True):
+        midclass, trD, trL, _, teL = getData(f_csv, trainSize, testSize)
+        if (midclass == 0):
+            break
+        else:
+            try:
+                model = sarimaTrain(trL)
+                teP = sarimaPredict(model, testSize)
+            except:
                 teP = xgboostPredict(array(trD), array(trL), array(teD))
 
             # count bias of midclass
@@ -185,6 +297,7 @@ def test(trainSize, testSize):
     
 def submit(trainSize): 
     global larclasPred
+    larclasPred = {}
     f1 = open("data.csv", "r")
     data_csv = csv.reader(f1)
     f2 = open("submit.csv", "r")
@@ -203,22 +316,25 @@ def submit(trainSize):
     goal[0][3] = 1
     goal[0][2] = 0
     
+    current = 0
+    
     while (True):
         midclass, trD, trL, teD, teL = getData(data_csv, trainSize, 0)
         if (midclass == 0):
             break
         else:
-            try:
-                model = sarimaTrain(trL)
-                #bias = sarimaBias(model, trL)
-                #tePM = xgboostPredict(array(trD), array(bias), array(teD))
-                teP = sarimaPredict(model, 30)
-                #teP = teP + tePM
-            except:
-                # failed to train sariam model, just use xgboost
+            
+            if (modelChoose[current] == 1):
+                try:
+                    model = sarimaTrain(trL)
+                    teP = sarimaPredict(model, 30)
+                except:
+                    teP = xgboostPredict(array(trD), array(trL), array(goal))
+            elif (modelChoose[current] == 2):
                 teP = xgboostPredict(array(trD), array(trL), array(goal))
-                
-            #teP = xgboostPredict(array(trD), array(trL), array(goal))
+            else:
+                teP = zeros(30)
+            current += 1
 
             # write file - midclass
             for x in teP:
@@ -252,6 +368,7 @@ def submit(trainSize):
         i+=1
     f1.close()
     f2.close()
-            
-#test(106, 14)
-submit(120)
+      
+test(106, 14)      
+modelselect(106, 14)
+#submit(120)
