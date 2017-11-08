@@ -189,8 +189,8 @@ def modelselect(trainSize, testSize):
 
             # sarima model
             try:
-                model = sarimaTrain(trL)
-                teP0 = sarimaPredict(model, testSize, 0, 1, 0, 1)
+                model = sarimaTrain(trL, 0, 1, 0, 1)
+                teP0 = sarimaPredict(model, testSize)
             except:
                 teP0 = zeros(testSize)
                 
@@ -272,8 +272,8 @@ def modelselect(trainSize, testSize):
 
             # sarima model
             try:
-                model = sarimaTrain(trL)
-                teP0 = sarimaPredict(model, testSize, 0, 1, 0, 1)
+                model = sarimaTrain(trL, 0, 1, 0, 1)
+                teP0 = sarimaPredict(model, testSize)
             except:
                 teP0 = zeros(testSize)
                 

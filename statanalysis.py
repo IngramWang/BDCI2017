@@ -5,6 +5,7 @@ Spyder Editor
 This is a temporary script file.
 """
 
+import datetime as dt
 import pandas as pd
 import numpy as np
 import matplotlib.pylab as plt
@@ -81,9 +82,7 @@ def getLCData(csvReader, trainCount, testCount):
         return 0, [], [], [], []
 
 from statsmodels.tsa.stattools import adfuller
-from statsmodels.tsa.arima_model import ARIMA
 import statsmodels.api as sm
-import datetime as dt
 
 def test_stationarity(timeseries):
     
@@ -127,9 +126,9 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
     
 def sariamTest():
     global larclasPred, larclasLabl, totalBias, totalCount   
-    f = open("datam.csv", "r")
+    f = open("2008.csv", "r")
     f_csv = csv.reader(f)
-    for i in range(0, 10):
+    for i in range(0, 1):
         midclass, trD, trL, teD, teL = getData(f_csv, 120, 0)    
         # print trL  
         data0 = pd.Series(trL) 
@@ -149,13 +148,15 @@ def sariamTest():
                     if (result.aic < minaic):
                         minaic = result.aic
                         greatfit = (p, 1, q)
-                    """    
+                    
                     output = result.forecast(trL.__len__()-trainData.__len__())
+                    """    
                     plt.plot(testData)
                     plt.plot(output, color='red')  
                     plt.show(block=False)
-                    print getBias(testData, output)
                     """
+                    print (p, q), result.aic, getBias(testData, output)
+                    
                 except:
                     pass
         

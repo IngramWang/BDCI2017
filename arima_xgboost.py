@@ -30,6 +30,7 @@ dtIndex = dtIndex + [dt.datetime(2015,4,x) for x in (range(1, 31))]
 
 modelChoose = []
 lcModelChoose = []
+arimaParaChoose = {}
 
 def getData(csvReader, trainCount, testCount):
     trainData = []
@@ -133,14 +134,37 @@ def test_stationarity(timeseries):
     fig = sm.graphics.tsa.plot_pacf(timeseries, lags=20, ax=ax2)
     plt.show(block=False)
     
-def sarimaTrain(trainLabel, ar=1, ma=1, sar=0, sma=1):
+def sarimaTrain(classNo, trainLabel):
     dataLength = trainLabel.__len__()
     data = pd.Series(trainLabel)
     index = dtIndex[0:dataLength]
     data.index = pd.Index(index)
-
-    model = SARIMAX(data, order=(ar,1,ma), seasonal_order=(sar,1,sma,7)) 
-    return model.fit() 
+    
+    try:
+        (ar, ma) = arimaParaChoose[classNo]
+    except KeyError:
+        ar = -1
+    
+    if (ar == -1):
+        minAic = 99999.0
+        (ar, ma) = (0, 0)
+        for p in range(0,2):
+            for q in range(0,2):
+                try:
+                    model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
+                    if (model.aic < minAic):
+                        (ar, ma) = (p, q)
+                        minAic = model.aic
+                        bestModel = model
+                except:
+                    pass
+        if (minAic < 90000.0):
+            arimaParaChoose[classNo] = (ar, ma)
+            return bestModel
+        else:
+            raise ValueError
+    else:
+        return SARIMAX(data, order=(ar,1,ma), seasonal_order=(0,1,1,7)).fit()
 
 def sarimaPredict(model, predictLength):
     output = model.forecast(predictLength)
@@ -189,7 +213,7 @@ def modelselect(trainSize, testSize):
 
             # sarima model
             try:
-                model = sarimaTrain(trL)
+                model = sarimaTrain(midclass, trL)
                 teP1 = sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
@@ -256,7 +280,7 @@ def modelselect(trainSize, testSize):
 
             # sarima model
             try:
-                model = sarimaTrain(trL)
+                model = sarimaTrain(larclass, trL)
                 teP1 = sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
@@ -330,7 +354,7 @@ def submit(trainSize):
         else:
             if (modelChoose[current] == 1):
                 try:
-                    model = sarimaTrain(trL)
+                    model = sarimaTrain(midclass, trL)
                     teP = sarimaPredict(model, 30)
                 except:
                     print("%d: failed to use arima, use xgboost instead" % midclass)
@@ -378,7 +402,7 @@ def submit(trainSize):
         else:
             if (lcModelChoose[current] == 1):
                 try:
-                    model = sarimaTrain(trL)
+                    model = sarimaTrain(larclass, trL)
                     teP = sarimaPredict(model, 30)
                 except:
                     print("%d: failed to use arima, use xgboost instead" % larclass)
