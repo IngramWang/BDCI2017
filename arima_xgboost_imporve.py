@@ -190,6 +190,12 @@ def modelselect(trainSize, testSize):
             # sarima model
             try:
                 model = sarimaTrain(trL)
+                teP0 = sarimaPredict(model, testSize, 0, 1, 0, 1)
+            except:
+                teP0 = zeros(testSize)
+                
+            try:
+                model = sarimaTrain(trL)
                 teP1 = sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
@@ -208,10 +214,11 @@ def modelselect(trainSize, testSize):
             larclass = int(midclass/100)
             totalCount += testSize
   
+            bias0 = sum((teP0-label)*(teP0-label))
             bias1 = sum((teP1-label)*(teP1-label))
             bias2 = sum((teP2-label)*(teP2-label))
             bias3 = sum((teP3-label)*(teP3-label))
-            if (bias3 < bias1 and bias3 < bias2):
+            if (bias3 < bias0 and bias3 < bias1 and bias3 < bias2):
                 totalBias += bias3
                 bias3 = math.sqrt(bias3/testSize)
                 print "(Midclass %d select ZERO, accuracy: %f)" % (midclass, bias3)
@@ -220,10 +227,19 @@ def modelselect(trainSize, testSize):
                     larclasPred[larclass] += teP3
                 else:
                     larclasPred[larclass] = teP3
+            elif (bias0 < bias1 and bias0 < bias2):
+                totalBias += bias0
+                bias0 = math.sqrt(bias0/testSize)
+                print "(Midclass %d select SARIMA[0], accuracy: %f)" % (midclass, bias0)
+                modelChoose.append(0)
+                if (larclass in larclasPred):
+                    larclasPred[larclass] += teP0
+                else:
+                    larclasPred[larclass] = teP0
             elif (bias1 < bias2):
                 totalBias += bias1
                 bias1 = math.sqrt(bias1/testSize)
-                print "(Midclass %d select SARIMA, accuracy: %f)" % (midclass, bias1)
+                print "(Midclass %d select SARIMA[1], accuracy: %f)" % (midclass, bias1)
                 modelChoose.append(1)
                 if (larclass in larclasPred):
                     larclasPred[larclass] += teP1
@@ -257,6 +273,12 @@ def modelselect(trainSize, testSize):
             # sarima model
             try:
                 model = sarimaTrain(trL)
+                teP0 = sarimaPredict(model, testSize, 0, 1, 0, 1)
+            except:
+                teP0 = zeros(testSize)
+                
+            try:
+                model = sarimaTrain(trL)
                 teP1 = sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
@@ -274,18 +296,24 @@ def modelselect(trainSize, testSize):
             label = array(teL)
             totalCount += testSize
   
+            bias0 = sum((teP0-label)*(teP0-label))
             bias1 = sum((teP1-label)*(teP1-label))
             bias2 = sum((teP2-label)*(teP2-label))
             bias3 = sum((teP3-label)*(teP3-label))
-            if (bias3 < bias1 and bias3 < bias2):
+            if (bias3 < bias0 and bias3 < bias1 and bias3 < bias2):
                 totalBias += bias3
                 bias3 = math.sqrt(bias3/testSize)
                 print "(Larclass %d select SUM, accuracy: %f)" % (larclass, bias3)
                 lcModelChoose.append(3)
+            elif (bias0 < bias1 and bias0 < bias2):
+                totalBias += bias0
+                bias0 = math.sqrt(bias0/testSize)
+                print "(Larclass %d select SARIMA[0], accuracy: %f)" % (larclass, bias0)
+                lcModelChoose.append(0)
             elif (bias1 < bias2):
                 totalBias += bias1
                 bias1 = math.sqrt(bias1/testSize)
-                print "(Larclass %d select SARIMA, accuracy: %f)" % (larclass, bias1)
+                print "(Larclass %d select SARIMA[1], accuracy: %f)" % (larclass, bias1)
                 lcModelChoose.append(1)
             else:
                 totalBias += bias2
@@ -328,7 +356,14 @@ def submit(trainSize):
         if (midclass == 0):
             break
         else:
-            if (modelChoose[current] == 1):
+            if (modelChoose[current] == 0):
+                try:
+                    model = sarimaTrain(trL, 0, 1, 0, 1)
+                    teP = sarimaPredict(model, 30)
+                except:
+                    print("%d: failed to use arima, use xgboost instead" % midclass)
+                    teP = xgboostPredict(array(trD), array(trL), array(goal))
+            elif (modelChoose[current] == 1):
                 try:
                     model = sarimaTrain(trL)
                     teP = sarimaPredict(model, 30)
@@ -346,7 +381,7 @@ def submit(trainSize):
                 row = submit_csv.next()
                 if (int(row[0]) != midclass):
                     raise KeyError
-                with open('submit1.csv', 'ab') as f:
+                with open('submit2.csv', 'ab') as f:
                     writer = csv.writer(f)
                     writer.writerow([row[0], row[1], x_int])
             
@@ -376,7 +411,14 @@ def submit(trainSize):
         if (larclass == 0):
             break
         else:
-            if (lcModelChoose[current] == 1):
+            if (lcModelChoose[current] == 0):
+                try:
+                    model = sarimaTrain(trL, 0, 1, 0, 1)
+                    teP = sarimaPredict(model, 30)
+                except:
+                    print("%d: failed to use arima, use xgboost instead" % larclass)
+                    teP = xgboostPredict(array(trD), array(trL), array(goal))
+            elif (lcModelChoose[current] == 1):
                 try:
                     model = sarimaTrain(trL)
                     teP = sarimaPredict(model, 30)
@@ -395,7 +437,7 @@ def submit(trainSize):
                 row = submit_csv.next()
                 if (int(row[0]) != larclass):
                     raise KeyError
-                with open('submit1.csv', 'ab') as f:
+                with open('submit2.csv', 'ab') as f:
                     writer = csv.writer(f)
                     writer.writerow([row[0], row[1], x_int])
 
