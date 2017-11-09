@@ -134,8 +134,8 @@ def sariamTest():
         data0 = pd.Series(trL) 
         data0.index = pd.Index(index)
         
-        trainData = data0[:dt.datetime(2015,4,15)]
-        testData = data0[dt.datetime(2015,4,16):]
+        trainData = data0[:dt.datetime(2015,4,9)]
+        testData = data0[dt.datetime(2015,4,10):]
     
         greatfit = (0, 0, 0)
         minaic = 99999

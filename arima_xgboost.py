@@ -134,37 +134,40 @@ def test_stationarity(timeseries):
     fig = sm.graphics.tsa.plot_pacf(timeseries, lags=20, ax=ax2)
     plt.show(block=False)
     
-def sarimaTrain(classNo, trainLabel):
+def sarimaTrain(classNo, trainLabel, testLabel=[]):
     dataLength = trainLabel.__len__()
     data = pd.Series(trainLabel)
     index = dtIndex[0:dataLength]
     data.index = pd.Index(index)
     
-    try:
-        (ar, ma) = arimaParaChoose[classNo]
-    except KeyError:
-        ar = -1
-    
-    if (ar == -1):
-        minAic = 99999.0
+    if (testLabel.__len__() == 0):
+        try:
+            (ar, ma) = arimaParaChoose[classNo]
+        except KeyError:
+            print("%d: no pre-trained parameter, use (1,1) default" % classNo)
+            (ar, ma) = (1, 1)
+        return SARIMAX(data, order=(ar,1,ma), seasonal_order=(0,1,1,7)).fit()
+    else:
+        minBias = 99999.0
         (ar, ma) = (0, 0)
-        for p in range(0,2):
-            for q in range(0,2):
+        label = array(testLabel)
+        for p in range(0,3):
+            for q in range(0,3):
                 try:
                     model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
-                    if (model.aic < minAic):
+                    output = array(model.forecast(testLabel.__len__()))                    
+                    bias = sum((output-label)*(output-label))
+                    if (bias < minBias):
                         (ar, ma) = (p, q)
-                        minAic = model.aic
+                        minBias = bias
                         bestModel = model
                 except:
                     pass
-        if (minAic < 90000.0):
+        if (minBias < 90000.0):
             arimaParaChoose[classNo] = (ar, ma)
             return bestModel
         else:
             raise ValueError
-    else:
-        return SARIMAX(data, order=(ar,1,ma), seasonal_order=(0,1,1,7)).fit()
 
 def sarimaPredict(model, predictLength):
     output = model.forecast(predictLength)
@@ -213,7 +216,7 @@ def modelselect(trainSize, testSize):
 
             # sarima model
             try:
-                model = sarimaTrain(midclass, trL)
+                model = sarimaTrain(midclass, trL, teL)
                 teP1 = sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
@@ -235,7 +238,7 @@ def modelselect(trainSize, testSize):
             bias1 = sum((teP1-label)*(teP1-label))
             bias2 = sum((teP2-label)*(teP2-label))
             bias3 = sum((teP3-label)*(teP3-label))
-            if (bias3 < bias1 and bias3 < bias2):
+            if (bias3 <= bias1 and bias3 <= bias2):
                 totalBias += bias3
                 bias3 = math.sqrt(bias3/testSize)
                 print "(Midclass %d select ZERO, accuracy: %f)" % (midclass, bias3)
@@ -244,7 +247,7 @@ def modelselect(trainSize, testSize):
                     larclasPred[larclass] += teP3
                 else:
                     larclasPred[larclass] = teP3
-            elif (bias1 < bias2):
+            elif (bias1 <= bias2):
                 totalBias += bias1
                 bias1 = math.sqrt(bias1/testSize)
                 print "(Midclass %d select SARIMA, accuracy: %f)" % (midclass, bias1)
@@ -280,7 +283,7 @@ def modelselect(trainSize, testSize):
 
             # sarima model
             try:
-                model = sarimaTrain(larclass, trL)
+                model = sarimaTrain(larclass, trL, teL)
                 teP1 = sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
@@ -301,12 +304,12 @@ def modelselect(trainSize, testSize):
             bias1 = sum((teP1-label)*(teP1-label))
             bias2 = sum((teP2-label)*(teP2-label))
             bias3 = sum((teP3-label)*(teP3-label))
-            if (bias3 < bias1 and bias3 < bias2):
+            if (bias3 <= bias1 and bias3 <= bias2):
                 totalBias += bias3
                 bias3 = math.sqrt(bias3/testSize)
                 print "(Larclass %d select SUM, accuracy: %f)" % (larclass, bias3)
                 lcModelChoose.append(3)
-            elif (bias1 < bias2):
+            elif (bias1 <= bias2):
                 totalBias += bias1
                 bias1 = math.sqrt(bias1/testSize)
                 print "(Larclass %d select SARIMA, accuracy: %f)" % (larclass, bias1)
