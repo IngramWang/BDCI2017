@@ -126,10 +126,15 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
     
 def sariamTest():
     global larclasPred, larclasLabl, totalBias, totalCount   
-    f = open("2008.csv", "r")
+    f = open("datam.csv", "r")
     f_csv = csv.reader(f)
-    for i in range(0, 1):
+    
+    writer = open("report.txt", "w")
+    
+    while (True):
         midclass, trD, trL, teD, teL = getData(f_csv, 120, 0)    
+        if (midclass == 0):
+            break
         # print trL  
         data0 = pd.Series(trL) 
         data0.index = pd.Index(index)
@@ -155,13 +160,14 @@ def sariamTest():
                     plt.plot(output, color='red')  
                     plt.show(block=False)
                     """
-                    print (p, q), result.aic, getBias(testData, output)
+                    writer.writelines("(%d,%d) %f %f\n" % (p, q, result.aic, getBias(testData, output)))
                     
                 except:
                     pass
         
-        print midclass, greatfit        
+        writer.writelines("midclass %d: %d %d\n" % (midclass, greatfit[0], greatfit[2]))       
     
     f.close()
+    writer.close()
     
 sariamTest()

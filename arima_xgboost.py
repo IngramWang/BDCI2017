@@ -149,20 +149,21 @@ def sarimaTrain(classNo, trainLabel, testLabel=[]):
         return SARIMAX(data, order=(ar,1,ma), seasonal_order=(0,1,1,7)).fit()
     else:
         minBias = 99999.0
+        minAic = 99999.0
         (ar, ma) = (0, 0)
         label = array(testLabel)
-        for p in range(0,3):
-            for q in range(0,3):
-                try:
-                    model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
-                    output = array(model.forecast(testLabel.__len__()))                    
-                    bias = sum((output-label)*(output-label))
-                    if (bias < minBias):
-                        (ar, ma) = (p, q)
-                        minBias = bias
-                        bestModel = model
-                except:
-                    pass
+        for p, q in [(1, 1), (0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]:
+            try:
+                model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
+                output = array(model.forecast(testLabel.__len__()))                    
+                bias = math.sqrt(sum((output-label)*(output-label))/testLabel.__len__())
+                if (bias < minBias and model.aic < minAic):
+                    (ar, ma) = (p, q)
+                    minBias = bias
+                    minAic = model.aic
+                    bestModel = model
+            except:
+                pass
         if (minBias < 90000.0):
             arimaParaChoose[classNo] = (ar, ma)
             return bestModel
@@ -335,6 +336,8 @@ def submit(trainSize):
     submit_csv.next()
     f3 = open("lcdatam.csv", "r")
     lc_data_csv = csv.reader(f3)
+    f4 = open('submit1.csv', 'wb')
+    writer = csv.writer(f4)
     
     # middle class
     goal = []
@@ -373,9 +376,7 @@ def submit(trainSize):
                 row = submit_csv.next()
                 if (int(row[0]) != midclass):
                     raise KeyError
-                with open('submit1.csv', 'ab') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([row[0], row[1], x_int])
+                writer.writerow([row[0], row[1], x_int])
             
             # count larclass
             larclass = int(midclass/100)
@@ -422,13 +423,12 @@ def submit(trainSize):
                 row = submit_csv.next()
                 if (int(row[0]) != larclass):
                     raise KeyError
-                with open('submit1.csv', 'ab') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([row[0], row[1], x_int])
+                writer.writerow([row[0], row[1], x_int])
 
     f1.close()
     f2.close()
     f3.close()
+    f4.close()
            
 modelselect(99, 21)
 submit(120)
