@@ -85,7 +85,6 @@ from statsmodels.tsa.stattools import adfuller
 import statsmodels.api as sm
 
 def test_stationarity(timeseries):
-    
     #Determing rolling statistics
     rolmean = timeseries.rolling(window=12,center=False).mean()
     rolstd = timeseries.rolling(window=12,center=False).std()
@@ -170,4 +169,50 @@ def sariamTest():
     f.close()
     writer.close()
     
-sariamTest()
+def test_Ljung_Box(timeseries, l):
+    acf, q, p = sm.tsa.acf(timeseries, nlags=l, qstat=True)
+    out = np.c_[range(1, l+1), acf[1:], q, p]
+    output=pd.DataFrame(out, columns=['lag', "AC", "Q", "P-value"])
+    output = output.set_index('lag')
+    print output
+    
+import arch    
+    
+def sariamGarchTest():
+    global larclasPred, larclasLabl, totalBias, totalCount, temp
+    f = open("datam.csv", "r")
+    f_csv = csv.reader(f)
+    
+    for i in range(0, 1):
+        midclass, trD, trL, teD, teL = getData(f_csv, 120, 0)    
+        if (midclass == 0):
+            break
+        # print trL  
+        data0 = pd.Series(trL) 
+        data0.index = pd.Index(index)
+        
+        trainData = data0[:dt.datetime(2015,4,9)]
+        testData = data0[dt.datetime(2015,4,10):]
+    
+        model = SARIMAX(trainData, order=(1,1,1), seasonal_order=(0,1,1,7)) 
+        result = model.fit() 
+        
+        at = trainData - result.fittedvalues
+        #plt.plot(at, color='red')  
+        #plt.show(block=False)    
+        
+        at2 = np.square(at)
+        #plt.plot(at2, color='red')  
+        #plt.show(block=False)  
+        #test_Ljung_Box(at2, 10)
+        
+        amodel = arch.arch_model(at2) 
+        aresult = amodel.fit()
+        temp.append(aresult)
+        output1 = result.forecast(trL.__len__()-trainData.__len__())
+        forecasts = aresult.forecast(horizon=5, start=dt.datetime(2015,4,9))
+        forecasts.variance[dt.datetime(2015,4,9):].plot()
+    
+    f.close()
+    
+sariamGarchTest()
