@@ -28,6 +28,18 @@ def load_all_data():
                 all_y[row[0]].append(float(row[-1]))
 
 
+def get_day(date):
+    date = int(date)
+    if date < 20150132:
+        return date - 20150100
+    elif date < 20150229:
+        return date - 20150200 + 31
+    elif date < 20150332:
+        return date - 20150300 + 59
+    else:
+        return date - 20150400 + 89
+
+
 # 用不同参数调用five_fold_params_pred
 def five_fold_pred():
     global all_pred
@@ -41,8 +53,8 @@ def five_fold_pred():
             input_csv = csv.reader(input_file)
             output.append(next(input_csv))
             for row in input_csv:
-                output.append(row + [str(all_pred[row[0]][int(row[1])-20150501])])
-        with open('five_fold_feature.csv', 'w', newline='') as output_file:
+                output.append(row + [str(all_pred[row[0]][get_day(row[1])-1])])
+        with open('five_fold_feature_v3.csv', 'w', newline='') as output_file:
             output_csv = csv.writer(output_file)
             for row in output:
                 output_csv.writerow(row)
@@ -105,7 +117,13 @@ def initialize_file():
         output_csv = csv.writer(output_file)
         output_csv.writerow(['code', 'date', 'models'])
         for code in commit_codes:
-            for date in range(20150501, 20150531):
+            for date in range(20150101, 20150132):
+                output_csv.writerow([code, str(date)])
+            for date in range(20150201, 20150229):
+                output_csv.writerow([code, str(date)])
+            for date in range(20150301, 20150332):
+                output_csv.writerow([code, str(date)])
+            for date in range(20150401, 20150431):
                 output_csv.writerow([code, str(date)])
 
 
