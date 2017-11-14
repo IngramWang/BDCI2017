@@ -34,7 +34,7 @@ modelChoose = []
 lcModelChoose = []
 arimaParaChoose = {}
 
-def getData(csvReader, trainCount, testCount):
+def getData(csvReader, trainCount, testCount, skipCount = 0):
     trainData = []
     testData = []
     trainLabel = []
@@ -62,11 +62,13 @@ def getData(csvReader, trainCount, testCount):
                     float(row[7]), float(row[8])]
             testData.append(data)
             testLabel.append(float(row[15]))
+        for x in range(0, skipCount):  
+            row = csvReader.next()
         return int(row[0]), trainData, trainLabel, testData, testLabel
     except StopIteration:
         return 0, [], [], [], []
     
-def getLCData(csvReader, trainCount, testCount):
+def getLCData(csvReader, trainCount, testCount, skipCount = 0):
     trainData = []
     testData = []
     trainLabel = []
@@ -84,6 +86,8 @@ def getLCData(csvReader, trainCount, testCount):
                     float(row[7])]
             testData.append(data)
             testLabel.append(float(row[14]))
+        for x in range(0, skipCount):  
+            row = csvReader.next()
         return int(row[0]), trainData, trainLabel, testData, testLabel
     except StopIteration:
         return 0, [], [], [], []
@@ -196,7 +200,7 @@ def sarimaBias(model, trainLabel):
     """
     return list(data - pred)
 
-def modelselect(trainSize, testSize):
+def modelselect(trainSize, testSize, skipSize = 0):
     global larclasPred, totalBias, totalCount, modelChoose, lcModelChoose 
     larclasPred = {}
     totalBias = 0
@@ -218,7 +222,7 @@ def modelselect(trainSize, testSize):
             x[2] = 1
         teD.append(x)
     while (True):
-        midclass, trD, trL, _, teL = getData(f_csv, trainSize, testSize)   
+        midclass, trD, trL, _, teL = getData(f_csv, trainSize, testSize, skipSize)   
         if (midclass == 0):
             break
         else:
@@ -285,7 +289,7 @@ def modelselect(trainSize, testSize):
             x[2] = 1
         teD.append(x)
     while (True):
-        larclass, trD, trL, _, teL = getLCData(lc_f_csv, trainSize, testSize)   
+        larclass, trD, trL, _, teL = getLCData(lc_f_csv, trainSize, testSize, skipSize)   
         if (larclass == 0):
             break
         else:
@@ -438,5 +442,5 @@ def submit(trainSize):
     f3.close()
     f4.close()
            
-modelselect(99, 21)
+modelselect(75, 14, 31)
 submit(120)
