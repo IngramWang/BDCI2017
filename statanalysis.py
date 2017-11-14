@@ -202,17 +202,18 @@ def sariamGarchTest():
         #plt.show(block=False)    
         
         at2 = np.square(at)
-        #plt.plot(at2, color='red')  
-        #plt.show(block=False)  
+        plt.plot(at2, color='red')  
+        plt.show(block=False)  
         #test_Ljung_Box(at2, 10)
         
         amodel = arch.arch_model(at2) 
-        aresult = amodel.fit()
+        aresult = amodel.fit(disp='off')
+        aresult.summary()
         temp.append(aresult)
         output1 = result.forecast(trL.__len__()-trainData.__len__())
         forecasts = aresult.forecast(horizon=5, start=dt.datetime(2015,4,9))
-        forecasts.variance[dt.datetime(2015,4,9):].plot()
-    
+        print forecasts.mean[dt.datetime(2015,4,9):]
+        print forecasts.variance[dt.datetime(2015,4,9):]
     f.close()
     
 sariamGarchTest()

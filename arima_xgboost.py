@@ -8,6 +8,8 @@ This is a temporary script file.
 import xgboost as xgb
 from numpy import array
 from numpy import zeros
+from numpy import log
+from numpy import exp
 import csv
 import math
 
@@ -32,7 +34,7 @@ modelChoose = []
 lcModelChoose = []
 arimaParaChoose = {}
 
-def getData(csvReader, trainCount, testCount):
+def getData(csvReader, trainCount, testCount, skipCount = 0):
     trainData = []
     testData = []
     trainLabel = []
@@ -60,11 +62,13 @@ def getData(csvReader, trainCount, testCount):
                     float(row[7]), float(row[8])]
             testData.append(data)
             testLabel.append(float(row[15]))
+        for x in range(0, skipCount):  
+            row = csvReader.next()
         return int(row[0]), trainData, trainLabel, testData, testLabel
     except StopIteration:
         return 0, [], [], [], []
     
-def getLCData(csvReader, trainCount, testCount):
+def getLCData(csvReader, trainCount, testCount, skipCount = 0):
     trainData = []
     testData = []
     trainLabel = []
@@ -82,6 +86,8 @@ def getLCData(csvReader, trainCount, testCount):
                     float(row[7])]
             testData.append(data)
             testLabel.append(float(row[14]))
+        for x in range(0, skipCount):  
+            row = csvReader.next()
         return int(row[0]), trainData, trainLabel, testData, testLabel
     except StopIteration:
         return 0, [], [], [], []
@@ -137,6 +143,8 @@ def test_stationarity(timeseries):
 def sarimaTrain(classNo, trainLabel, testLabel=[]):
     dataLength = trainLabel.__len__()
     data = pd.Series(trainLabel)
+    for i in range(0, dataLength):
+        data[i] = log(data[i] + 1)
     index = dtIndex[0:dataLength]
     data.index = pd.Index(index)
     
@@ -155,7 +163,9 @@ def sarimaTrain(classNo, trainLabel, testLabel=[]):
         for p, q in [(1, 1), (0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]:
             try:
                 model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
-                output = array(model.forecast(testLabel.__len__()))                    
+                output = array(model.forecast(testLabel.__len__()))       
+                for i in range(0, len(testLabel)):
+                    output[i] = exp(output[i]) - 1
                 bias = math.sqrt(sum((output-label)*(output-label))/testLabel.__len__())
                 if (bias < minBias and model.aic < minAic):
                     (ar, ma) = (p, q)
@@ -172,6 +182,8 @@ def sarimaTrain(classNo, trainLabel, testLabel=[]):
 
 def sarimaPredict(model, predictLength):
     output = model.forecast(predictLength)
+    for i in range(0, predictLength):
+        output[i] = exp(output[i]) - 1
     return array(output)
 
 def sarimaBias(model, trainLabel):
@@ -188,7 +200,7 @@ def sarimaBias(model, trainLabel):
     """
     return list(data - pred)
 
-def modelselect(trainSize, testSize):
+def modelselect(trainSize, testSize, skipSize = 0):
     global larclasPred, totalBias, totalCount, modelChoose, lcModelChoose 
     larclasPred = {}
     totalBias = 0
@@ -210,7 +222,7 @@ def modelselect(trainSize, testSize):
             x[2] = 1
         teD.append(x)
     while (True):
-        midclass, trD, trL, _, teL = getData(f_csv, trainSize, testSize)   
+        midclass, trD, trL, _, teL = getData(f_csv, trainSize, testSize, skipSize)   
         if (midclass == 0):
             break
         else:
@@ -277,7 +289,7 @@ def modelselect(trainSize, testSize):
             x[2] = 1
         teD.append(x)
     while (True):
-        larclass, trD, trL, _, teL = getLCData(lc_f_csv, trainSize, testSize)   
+        larclass, trD, trL, _, teL = getLCData(lc_f_csv, trainSize, testSize, skipSize)   
         if (larclass == 0):
             break
         else:
@@ -430,5 +442,5 @@ def submit(trainSize):
     f3.close()
     f4.close()
            
-modelselect(99, 21)
+modelselect(75, 14, 31)
 submit(120)

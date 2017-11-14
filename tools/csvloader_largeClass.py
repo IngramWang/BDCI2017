@@ -59,7 +59,7 @@ def writeData():
         beforeHoliday = 1
     else:
         holiday = 0
-        beforeHoliday = 1
+        beforeHoliday = 0
     with open('lcoutput.csv', 'ab') as f:
         writer = csv.writer(f)
         for larclass in dailyData:

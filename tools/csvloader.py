@@ -60,7 +60,7 @@ def writeData():
         beforeHoliday = 1
     else:
         holiday = 0
-        beforeHoliday = 1
+        beforeHoliday = 0
     promotionClass = {}
     for midclass in promotions:
         larclass = int(midclass)/100
