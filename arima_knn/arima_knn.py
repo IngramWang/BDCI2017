@@ -5,7 +5,10 @@ Spyder Editor
 This is a temporary script file.
 """
 
+
+import KNN_interface
 import xgboost as xgb
+
 from numpy import array
 from numpy import zeros
 from numpy import log
@@ -103,7 +106,7 @@ def dataLog(midclass, accuracy, trainLabl, testPred, testLabl):
         for x in range(0, len(testPred)):
             writer.writerow([count, testLabl[x], testPred[x]])
             count += 1
-
+            
 def xgboostPredict(trainData, trainLabel, dataToPredict):
     dtrain = xgb.DMatrix(trainData, trainLabel)
     params = {"objective": "reg:linear"}
@@ -234,10 +237,12 @@ def modelselect(trainSize, testSize, skipSize = 0):
             except:
                 teP1 = zeros(testSize)
             
-            # xgboost model
+            # kNN model
             try:
+                #teP2 = KNN_interface.knn(trL, testSize)
                 teP2 = xgboostPredict(array(trD), array(trL), array(teD))
             except:
+                print "Warning: kNN train fail"
                 teP2 = zeros(testSize)
             
             # just zero
@@ -272,7 +277,7 @@ def modelselect(trainSize, testSize, skipSize = 0):
             else:
                 totalBias += bias2
                 bias2 = math.sqrt(bias2/testSize)
-                print "(Midclass %d select XGBOOST, accuracy: %f)" % (midclass, bias2)
+                print "(Midclass %d select kNN, accuracy: %f)" % (midclass, bias2)
                 modelChoose.append(2)
                 if (larclass in larclasPred):
                     larclasPred[larclass] += teP2
@@ -301,10 +306,12 @@ def modelselect(trainSize, testSize, skipSize = 0):
             except:
                 teP1 = zeros(testSize)
             
-            # xgboost model
+            # knn model
             try:
+                #teP2 = KNN_interface.knn(trL, testSize)
                 teP2 = xgboostPredict(array(trD), array(trL), array(teD))
             except:
+                print "Warning: kNN train fail"
                 teP2 = zeros(testSize)
             
             # sum of midclasses
@@ -330,7 +337,7 @@ def modelselect(trainSize, testSize, skipSize = 0):
             else:
                 totalBias += bias2
                 bias2 = math.sqrt(bias2/testSize)
-                print "(Larclass %d select XGBOOST, accuracy: %f)" % (larclass, bias2)
+                print "(Larclass %d select kNN, accuracy: %f)" % (larclass, bias2)
                 lcModelChoose.append(2)
 
     totalBias = math.sqrt(totalBias/totalCount)
@@ -351,18 +358,7 @@ def submit(trainSize):
     f4 = open('submit1.csv', 'wb')
     writer = csv.writer(f4)
     
-    # middle class
-    goal = []
-    for i in range(1, 31):
-        x = [i, (i+4)%7, 0, 0, 0, 0]
-        if (x[1] == 6 or x[1]==0):
-            x[3] = 1
-        elif (x[1] == 5):
-            x[2] = 1
-        goal.append(x)
-    goal[0][3] = 1
-    goal[0][2] = 0
-    
+    # middle class   
     current = 0
     
     while (True):
@@ -375,10 +371,10 @@ def submit(trainSize):
                     model = sarimaTrain(midclass, trL)
                     teP = sarimaPredict(model, 30)
                 except:
-                    print("%d: failed to use arima, use xgboost instead" % midclass)
-                    teP = xgboostPredict(array(trD), array(trL), array(goal))
+                    print("%d: failed to use arima, use kNN instead" % midclass)
+                    teP = KNN_interface.knn(trL, 30)
             elif (modelChoose[current] == 2):
-                teP = xgboostPredict(array(trD), array(trL), array(goal))
+                teP = KNN_interface.knn(trL, 30)
             else:
                 teP = zeros(30)
             current += 1
@@ -398,17 +394,6 @@ def submit(trainSize):
                 larclasPred[larclass] = teP  
     
     # large class
-    goal = []
-    for i in range(1, 31):
-        x = [i, (i+4)%7, 0, 0, 0]
-        if (x[1] == 6 or x[1]==0):
-            x[3] = 1
-        elif (x[1] == 5):
-            x[2] = 1
-        goal.append(x)
-    goal[0][3] = 1
-    goal[0][2] = 0
-    
     current = 0
     
     while (True):
@@ -421,15 +406,15 @@ def submit(trainSize):
                     model = sarimaTrain(larclass, trL)
                     teP = sarimaPredict(model, 30)
                 except:
-                    print("%d: failed to use arima, use xgboost instead" % larclass)
-                    teP = xgboostPredict(array(trD), array(trL), array(goal))
+                    print("%d: failed to use arima, use kNN instead" % larclass)
+                    teP = KNN_interface.knn(trL, 30)
             elif (lcModelChoose[current] == 2):
-                teP = xgboostPredict(array(trD), array(trL), array(goal))
+                teP = KNN_interface.knn(trL, 30)
             else:
                 teP = larclasPred[larclass]
             current += 1
 
-            # write file - midclass
+            # write file - larclass
             for x in teP:
                 x_int = round(x)
                 row = submit_csv.next()
