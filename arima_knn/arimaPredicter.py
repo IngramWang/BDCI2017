@@ -13,10 +13,11 @@ import math
 import pandas as pd
 from statsmodels.tsa.statespace.sarimax import SARIMAX  
 import statsmodels.api as sm
+
 import matplotlib.pylab as plt
 from statsmodels.tsa.stattools import adfuller 
 
-class arimaPredicter():
+class predicter():
     def __init__(self):
         self.ParaChoose = {}
         self.dtIndex = []
@@ -27,8 +28,10 @@ class arimaPredicter():
     def getIndex(self):
         return self.dtIndex
 
-    def setPara(self, clas, ar, ma):
-        self.ParaChoose[clas]=(ar, ma)
+    def setPara(self, clas, para):
+        if (type(para)!=tuple or len(para)!=2):
+            raise TypeError("timeserise should be (ar, ma)")
+        self.ParaChoose[clas] = para
     
     def getPara(self):
         return self.ParaChoose
@@ -40,7 +43,7 @@ class arimaPredicter():
             timeseries = pd.Series(timeseries)
             timeseries.index = pd.Index(self.dtIndex[0:length])
         elif (type(timeseries) != pd.core.series.Series):
-            raise ValueError("Type Error: use list or series")
+            raise TypeError("timeserise should be a list or series")
         rolmean = timeseries.rolling(window=12,center=False).mean()
         rolstd = timeseries.rolling(window=12,center=False).std()
     
@@ -53,12 +56,12 @@ class arimaPredicter():
         plt.show(block=False)
         
         #Perform Dickey-Fuller test:
-        print 'Results of Dickey-Fuller Test:'
+        print('Results of Dickey-Fuller Test:')
         dftest = adfuller(timeseries, autolag='AIC')
         dfoutput = pd.Series(dftest[0:4], index=['Test Statistic','p-value','#Lags Used','Number of Observations Used'])
         for key,value in dftest[4].items():
             dfoutput['Critical Value (%s)'%key] = value
-        print dfoutput
+        print(dfoutput)
         
         #Get AR and MA parameter
         fig = plt.figure(figsize=(12,8))
