@@ -6,19 +6,14 @@ This is a temporary script file.
 """
 
 import xgboost as xgb
+import arimaPredicter
+import dataLoader
+
 from numpy import array
 from numpy import zeros
-from numpy import log
-from numpy import exp
 import csv
 import math
-
-import pandas as pd
-from statsmodels.tsa.statespace.sarimax import SARIMAX  
-import statsmodels.api as sm
 import datetime as dt
-import matplotlib.pylab as plt
-from statsmodels.tsa.stattools import adfuller 
 
 larclasPred = {}
 larclasLabl = {}
@@ -34,63 +29,8 @@ modelChoose = []
 lcModelChoose = []
 arimaParaChoose = {}
 
-def getData(csvReader, trainCount, testCount, skipCount = 0):
-    trainData = []
-    testData = []
-    trainLabel = []
-    testLabel = []
-    try:
-        for x in range(0, trainCount):
-            row = csvReader.next()
-            """
-            data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                    float(row[7]), float(row[8]), float(row[9]), float(row[10]),
-                    float(row[11]), float(row[12])]
-            """
-            data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                    float(row[7]), float(row[8])]
-            trainData.append(data)
-            trainLabel.append(float(row[15]))
-        for x in range(0, testCount):
-            row = csvReader.next()
-            """
-            data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                    float(row[7]), float(row[8]), float(row[9]), float(row[10]),
-                    float(row[11]), float(row[12])]
-            """
-            data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                    float(row[7]), float(row[8])]
-            testData.append(data)
-            testLabel.append(float(row[15]))
-        for x in range(0, skipCount):  
-            row = csvReader.next()
-        return int(row[0]), trainData, trainLabel, testData, testLabel
-    except StopIteration:
-        return 0, [], [], [], []
-    
-def getLCData(csvReader, trainCount, testCount, skipCount = 0):
-    trainData = []
-    testData = []
-    trainLabel = []
-    testLabel = []
-    try:
-        for x in range(0, trainCount):
-            row = csvReader.next()
-            data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                    float(row[7])]
-            trainData.append(data)
-            trainLabel.append(float(row[14]))
-        for x in range(0, testCount):
-            row = csvReader.next()
-            data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                    float(row[7])]
-            testData.append(data)
-            testLabel.append(float(row[14]))
-        for x in range(0, skipCount):  
-            row = csvReader.next()
-        return int(row[0]), trainData, trainLabel, testData, testLabel
-    except StopIteration:
-        return 0, [], [], [], []
+ap = arimaPredicter.predicter()
+ap.setIndex(dtIndex)
     
 def dataLog(midclass, accuracy, trainLabl, testPred, testLabl):
     with open('compare.csv', 'ab') as f:
@@ -110,96 +50,6 @@ def xgboostPredict(trainData, trainLabel, dataToPredict):
     gbm = xgb.train(dtrain=dtrain, params=params)
     return gbm.predict(xgb.DMatrix(dataToPredict))
 
-def test_stationarity(timeseries):
-    
-    #Determing rolling statistics
-    rolmean = timeseries.rolling(window=12,center=False).mean()
-    rolstd = timeseries.rolling(window=12,center=False).std()
-
-    #Plot rolling statistics:
-    plt.plot(timeseries, color='blue',label='Original')
-    plt.plot(rolmean, color='red', label='Rolling Mean')
-    plt.plot(rolstd, color='black', label = 'Rolling Std')
-    plt.legend(loc='best')
-    plt.title('Rolling Mean & Standard Deviation')
-    plt.show(block=False)
-    
-    #Perform Dickey-Fuller test:
-    print 'Results of Dickey-Fuller Test:'
-    dftest = adfuller(timeseries, autolag='AIC')
-    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic','p-value','#Lags Used','Number of Observations Used'])
-    for key,value in dftest[4].items():
-        dfoutput['Critical Value (%s)'%key] = value
-    print dfoutput
-    
-    #Get AR and MA parameter
-    fig = plt.figure(figsize=(12,8))
-    ax1=fig.add_subplot(211)
-    fig = sm.graphics.tsa.plot_acf(timeseries, lags=20, ax=ax1)
-    ax2 = fig.add_subplot(212)
-    fig = sm.graphics.tsa.plot_pacf(timeseries, lags=20, ax=ax2)
-    plt.show(block=False)
-    
-def sarimaTrain(classNo, trainLabel, testLabel=[]):
-    dataLength = trainLabel.__len__()
-    data = pd.Series(trainLabel)
-    for i in range(0, dataLength):
-        data[i] = log(data[i] + 1)
-    index = dtIndex[0:dataLength]
-    data.index = pd.Index(index)
-    
-    if (testLabel.__len__() == 0):
-        try:
-            (ar, ma) = arimaParaChoose[classNo]
-        except KeyError:
-            print("%d: no pre-trained parameter, use (1,1) default" % classNo)
-            (ar, ma) = (1, 1)
-        return SARIMAX(data, order=(ar,1,ma), seasonal_order=(0,1,1,7)).fit()
-    else:
-        minBias = 99999.0
-        minAic = 99999.0
-        (ar, ma) = (0, 0)
-        label = array(testLabel)
-        for p, q in [(1, 1), (0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]:
-            try:
-                model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
-                output = array(model.forecast(testLabel.__len__()))       
-                for i in range(0, len(testLabel)):
-                    output[i] = exp(output[i]) - 1
-                bias = math.sqrt(sum((output-label)*(output-label))/testLabel.__len__())
-                if (bias < minBias and model.aic < minAic):
-                    (ar, ma) = (p, q)
-                    minBias = bias
-                    minAic = model.aic
-                    bestModel = model
-            except:
-                pass
-        if (minBias < 90000.0):
-            arimaParaChoose[classNo] = (ar, ma)
-            return bestModel
-        else:
-            raise ValueError
-
-def sarimaPredict(model, predictLength):
-    output = model.forecast(predictLength)
-    for i in range(0, predictLength):
-        output[i] = exp(output[i]) - 1
-    return array(output)
-
-def sarimaBias(model, trainLabel):
-    dataLength = trainLabel.__len__()
-    data = pd.Series(trainLabel)
-    index = dtIndex[0:dataLength]
-    data.index = pd.Index(index)
-    
-    pred = model.predict()
-    """
-    plt.plot(data, color='blue',label='Original')
-    plt.plot(pred, color='red', label='Predicted')
-    plt.show(block=False)
-    """
-    return list(data - pred)
-
 def modelselect(trainSize, testSize, skipSize = 0):
     global larclasPred, totalBias, totalCount, modelChoose, lcModelChoose 
     larclasPred = {}
@@ -207,10 +57,9 @@ def modelselect(trainSize, testSize, skipSize = 0):
     totalCount = 0
     modelChoose = []
     lcModelChoose = []
-    f = open("datam.csv", "r")
-    f_csv = csv.reader(f)
-    lc_f = open("lcdatam.csv", "r")
-    lc_f_csv = csv.reader(lc_f)
+    
+    loader = dataLoader.loader("datam.csv", "lcdatam.csv")
+    loader.setSize(trainSize, testSize, skipSize)
         
     # middle class
     teD = []
@@ -222,15 +71,15 @@ def modelselect(trainSize, testSize, skipSize = 0):
             x[2] = 1
         teD.append(x)
     while (True):
-        midclass, trD, trL, _, teL = getData(f_csv, trainSize, testSize, skipSize)   
+        midclass, trD, trL, _, teL = loader.getNextMidClass() 
         if (midclass == 0):
             break
         else:
 
             # sarima model
             try:
-                model = sarimaTrain(midclass, trL, teL)
-                teP1 = sarimaPredict(model, testSize)
+                model = ap.sarimaTrain(midclass, trL, teL)
+                teP1 = ap.sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
             
@@ -289,15 +138,15 @@ def modelselect(trainSize, testSize, skipSize = 0):
             x[2] = 1
         teD.append(x)
     while (True):
-        larclass, trD, trL, _, teL = getLCData(lc_f_csv, trainSize, testSize, skipSize)   
+        larclass, trD, trL, _, teL = loader.getNextLarClass()  
         if (larclass == 0):
             break
         else:
 
             # sarima model
             try:
-                model = sarimaTrain(larclass, trL, teL)
-                teP1 = sarimaPredict(model, testSize)
+                model = ap.sarimaTrain(larclass, trL, teL)
+                teP1 = ap.sarimaPredict(model, testSize)
             except:
                 teP1 = zeros(testSize)
             
@@ -335,21 +184,19 @@ def modelselect(trainSize, testSize, skipSize = 0):
 
     totalBias = math.sqrt(totalBias/totalCount)
     print "(Predict finished, accuracy: %f)" % (totalBias)        
-    f.close()
-    lc_f.close()
+    loader.closeFiles()
     
 def submit(trainSize): 
     global larclasPred
     larclasPred = {}
-    f1 = open("datam.csv", "r")
-    data_csv = csv.reader(f1)
-    f2 = open("submit.csv", "r")
-    submit_csv = csv.reader(f2)
+    f1 = open("submit.csv", "r")
+    submit_csv = csv.reader(f1)
     submit_csv.next()
-    f3 = open("lcdatam.csv", "r")
-    lc_data_csv = csv.reader(f3)
-    f4 = open('submit1.csv', 'wb')
-    writer = csv.writer(f4)
+    f2 = open('submit1.csv', 'wb')
+    writer = csv.writer(f2)
+    
+    loader = dataLoader.loader("datam.csv", "lcdatam.csv")
+    loader.setSize(trainSize)
     
     # middle class
     goal = []
@@ -366,14 +213,14 @@ def submit(trainSize):
     current = 0
     
     while (True):
-        midclass, trD, trL, teD, teL = getData(data_csv, trainSize, 0)
+        midclass, trD, trL, teD, teL = loader.getNextMidClass()
         if (midclass == 0):
             break
         else:
             if (modelChoose[current] == 1):
                 try:
-                    model = sarimaTrain(midclass, trL)
-                    teP = sarimaPredict(model, 30)
+                    model = ap.sarimaTrain(midclass, trL)
+                    teP = ap.sarimaPredict(model, 30)
                 except:
                     print("%d: failed to use arima, use xgboost instead" % midclass)
                     teP = xgboostPredict(array(trD), array(trL), array(goal))
@@ -412,14 +259,14 @@ def submit(trainSize):
     current = 0
     
     while (True):
-        larclass, trD, trL, teD, teL = getLCData(lc_data_csv, trainSize, 0)
+        larclass, trD, trL, teD, teL = loader.getNextLarClass()
         if (larclass == 0):
             break
         else:
             if (lcModelChoose[current] == 1):
                 try:
-                    model = sarimaTrain(larclass, trL)
-                    teP = sarimaPredict(model, 30)
+                    model = ap.sarimaTrain(larclass, trL)
+                    teP = ap.sarimaPredict(model, 30)
                 except:
                     print("%d: failed to use arima, use xgboost instead" % larclass)
                     teP = xgboostPredict(array(trD), array(trL), array(goal))
@@ -439,8 +286,7 @@ def submit(trainSize):
 
     f1.close()
     f2.close()
-    f3.close()
-    f4.close()
+    loader.closeFiles()
            
 modelselect(75, 14, 31)
 """
