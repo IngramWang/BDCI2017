@@ -21,12 +21,12 @@ def sariamOutput():
     loader = dataLoader.loader("datam.csv", "lcdatam.csv")
     loader.setSize(90, 0, 30)
     
-    f1 = open("result01.txt", "wb")
-    writer1 = csv.reader(f1)
-    f2 = open("result11.txt", "wb")
-    writer2 = csv.reader(f2)
-    f3 = open("result12.txt", "wb")
-    writer3 = csv.reader(f3)
+    f1 = open("result01.csv", "wb")
+    writer1 = csv.writer(f1)
+    f2 = open("result11.csv", "wb")
+    writer2 = csv.writer(f2)
+    f3 = open("result12.csv", "wb")
+    writer3 = csv.writer(f3)
     
     ap = arimaPredicter.predicter();
     ap.setIndex(index)
