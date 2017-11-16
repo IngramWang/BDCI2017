@@ -46,9 +46,14 @@ def dataLog(midclass, accuracy, trainLabl, testPred, testLabl):
 
 def xgboostPredict(trainData, trainLabel, dataToPredict):
     dtrain = xgb.DMatrix(trainData, trainLabel)
-    params = {"objective": "reg:linear"}
+    params = {"objective":"reg:linear", "max_depth":1, "gamma":2}
     gbm = xgb.train(dtrain=dtrain, params=params)
     return gbm.predict(xgb.DMatrix(dataToPredict))
+
+def simulateFeature(trainData, musk):
+    for feature in trainData:
+        for i in musk:
+            feature[i] = 0
 
 def modelselect(trainSize, testSize, skipSize = 0):
     global larclasPred, totalBias, totalCount, modelChoose, lcModelChoose 
@@ -62,16 +67,8 @@ def modelselect(trainSize, testSize, skipSize = 0):
     loader.setSize(trainSize, testSize, skipSize)
         
     # middle class
-    teD = []
-    for i in range(31-testSize, 31):
-        x = [i, (i+2)%7, 0, 0, 0, 0]
-        if (x[1] == 6 or x[1]==0):
-            x[3] = 1
-        elif (x[1] == 5):
-            x[2] = 1
-        teD.append(x)
     while (True):
-        midclass, trD, trL, _, teL = loader.getNextMidClass() 
+        midclass, trD, trL, teD, teL = loader.getNextMidClass() 
         if (midclass == 0):
             break
         else:
@@ -84,6 +81,7 @@ def modelselect(trainSize, testSize, skipSize = 0):
                 teP1 = zeros(testSize)
             
             # xgboost model
+            simulateFeature(teD, [-2, -1])
             try:
                 teP2 = xgboostPredict(array(trD), array(trL), array(teD))
             except:
@@ -129,16 +127,8 @@ def modelselect(trainSize, testSize, skipSize = 0):
                     larclasPred[larclass] = teP2
                     
     # large class
-    teD = []
-    for i in range(31-testSize, 31):
-        x = [i, (i+2)%7, 0, 0, 0]
-        if (x[1] == 6 or x[1]==0):
-            x[3] = 1
-        elif (x[1] == 5):
-            x[2] = 1
-        teD.append(x)
     while (True):
-        larclass, trD, trL, _, teL = loader.getNextLarClass()  
+        larclass, trD, trL, teD, teL = loader.getNextLarClass()  
         if (larclass == 0):
             break
         else:
@@ -151,6 +141,7 @@ def modelselect(trainSize, testSize, skipSize = 0):
                 teP1 = zeros(testSize)
             
             # xgboost model
+            simulateFeature(teD, [-2, -1])
             try:
                 teP2 = xgboostPredict(array(trD), array(trL), array(teD))
             except:
@@ -232,6 +223,8 @@ def submit(trainSize):
             
             for x in teP:
                 x_int = round(x)
+                if (x_int < 0):
+                    x_int = 0
                 row = submit_csv.next()
                 if (int(row[0]) != midclass):
                     raise KeyError
@@ -279,6 +272,8 @@ def submit(trainSize):
             # write file - midclass
             for x in teP:
                 x_int = round(x)
+                if (x_int < 0):
+                    x_int = 0
                 row = submit_csv.next()
                 if (int(row[0]) != larclass):
                     raise KeyError

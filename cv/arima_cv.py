@@ -19,7 +19,7 @@ index = index + [dt.datetime(2015,4,x) for x in range(1, 31)]
     
 def sariamOutput():
     loader = dataLoader.loader("datam.csv", "lcdatam.csv")
-    loader.setSize(90, 0, 30)
+    loader.setSize(120, 0, 0)
     
     f1 = open("result01.csv", "wb")
     writer1 = csv.writer(f1)
@@ -43,7 +43,7 @@ def sariamOutput():
         except:
             result = np.zeros(30)
         for i in range(0, 30):
-            writer1.writerow([midclass, "201504%02d" % (i+1), result[i]])
+            writer1.writerow([midclass, "201505%02d" % (i+1), result[i]])
         
     
         ap.setPara(midclass, (1, 1))
@@ -53,7 +53,7 @@ def sariamOutput():
         except:
             result = np.zeros(30)
         for i in range(0, 30):
-            writer2.writerow([midclass, "201504%02d" % (i+1), result[i]])
+            writer2.writerow([midclass, "201505%02d" % (i+1), result[i]])
             
         ap.setPara(midclass, (1, 2))
         try:
@@ -62,7 +62,7 @@ def sariamOutput():
         except:
             result = np.zeros(30)
         for i in range(0, 30):
-            writer3.writerow([midclass, "201504%02d" % (i+1), result[i]])
+            writer3.writerow([midclass, "201505%02d" % (i+1), result[i]])
     
     
     while (True):
@@ -77,7 +77,7 @@ def sariamOutput():
         except:
             result = np.zeros(30)
         for i in range(0, 30):
-            writer1.writerow([larclass, "201504%02d" % (i+1), result[i]])
+            writer1.writerow([larclass, "201505%02d" % (i+1), result[i]])
         
     
         ap.setPara(larclass, (1, 1))
@@ -87,7 +87,7 @@ def sariamOutput():
         except:
             result = np.zeros(30)
         for i in range(0, 30):
-            writer2.writerow([larclass, "201504%02d" % (i+1), result[i]])
+            writer2.writerow([larclass, "201505%02d" % (i+1), result[i]])
             
         ap.setPara(larclass, (1, 2))
         try:
@@ -96,7 +96,7 @@ def sariamOutput():
         except:
             result = np.zeros(30)
         for i in range(0, 30):
-            writer3.writerow([larclass, "201504%02d" % (i+1), result[i]])
+            writer3.writerow([larclass, "201505%02d" % (i+1), result[i]])
             
     f1.close()
     f2.close()
