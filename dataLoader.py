@@ -20,7 +20,14 @@ class loader():
             self.lar_f_csv = csv.reader(self.lar_f)
         else:
             self.lar_f = None
-            self.lar_f_csv = None   
+            self.lar_f_csv = None
+        self.trainCount = 120
+        self.testCount = 0
+        self.skipCount = 0
+        self.midClassFeature = range(3, 9)
+        self.midSuffix = []
+        self.larClassFeature = range(3, 8)
+        self.larSuffix = []
             
         
     def setFile(self, midClassFile = "", LarClassFile = ""):
@@ -53,6 +60,14 @@ class loader():
         self.trainCount = train
         self.testCount = test
         self.skipCount = skip
+        
+    def setMidClassFeature(self, feature=[], suffix=[]):
+        self.midClassFeature = feature
+        self.midSuffix = suffix
+        
+    def setLarClassFeature(self, feature=[], suffix=[]):
+        self.larClassFeature = feature
+        self.larSuffix = suffix
 
     def getNextMidClass(self):
         trainData = []
@@ -62,20 +77,24 @@ class loader():
         try:
             for x in range(0, self.trainCount):
                 row = next(self.mid_f_csv)
-                data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                        float(row[7]), float(row[8])]
+                data = []
+                for y in self.midClassFeature:
+                    data.append(float(row[y]))
+                data = data + self.midSuffix
                 trainData.append(data)
                 trainLabel.append(float(row[-1]))
                 
             for x in range(0, self.testCount):
                 row = next(self.mid_f_csv)
-                data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                        float(row[7]), float(row[8])]
+                data = []
+                for y in self.midClassFeature:
+                    data.append(float(row[y]))
+                data = data + self.midSuffix
                 testData.append(data)
                 testLabel.append(float(row[-1]))
                 
             for x in range(0, self.skipCount):  
-                row = next(self.mid_f_csv)
+                next(self.mid_f_csv)
             return int(row[0]), trainData, trainLabel, testData, testLabel
         except StopIteration:
             return 0, [], [], [], []
@@ -88,20 +107,24 @@ class loader():
         try:
             for x in range(0, self.trainCount):
                 row = next(self.lar_f_csv)
-                data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                        float(row[7])]
+                data = []
+                for y in self.larClassFeature:
+                    data.append(float(row[y]))
+                data = data + self.larSuffix
                 trainData.append(data)
                 trainLabel.append(float(row[-1]))
                 
             for x in range(0, self.testCount):
                 row = next(self.lar_f_csv)
-                data = [float(row[3]), float(row[4]), float(row[5]), float(row[6]),
-                        float(row[7])]
+                data = []
+                for y in self.larClassFeature:
+                    data.append(float(row[y]))
+                data = data + self.larSuffix
                 testData.append(data)
                 testLabel.append(float(row[-1]))
                 
             for x in range(0, self.skipCount):  
-                row = next(self.lar_f_csv)
+                next(self.lar_f_csv)
             return int(row[0]), trainData, trainLabel, testData, testLabel
         except StopIteration:
             return 0, [], [], [], []
