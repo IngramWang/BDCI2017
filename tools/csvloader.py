@@ -12,8 +12,9 @@ Created on Tue Oct 24 18:48:57 2017
 import csv
 import datetime
 
-DictHoilday = [1,2,3,49,50,51,52,53,54,55,96]
-DictBeforeHoilday = [46,47,48]
+DictHoilday = [1,2,3,49,50,51,52,53,54,55,96,121,173]
+DictBeforeHoilday = [46,47,48,120]
+DictWorkday = [46, 58, 59]
 midClasses = {}
 
 date = datetime.datetime(2015, 1, 1)
@@ -52,6 +53,12 @@ def writeData():
     elif (dayCount in DictBeforeHoilday):
         holiday = 0
         beforeHoliday = 1
+    elif (dayCount in DictWorkday):
+        holiday = 0
+        if (week==6 or ((dayCount+1) in DictHoilday)):
+            beforeHoliday = 1
+        else:
+            beforeHoliday = 0
     elif (week==0 or week==6):
         holiday = 1
         beforeHoliday = 0
@@ -118,14 +125,14 @@ def writeData():
     for midclass in midClasses:
         midClasses[midclass] = 0
     
-with open('submit.csv') as f:
+with open('example.csv') as f:
     f_csv = csv.reader(f)
     f_csv.next()
     for row in f_csv:
         if (int(row[0]) > 100):
             midClasses[row[0]] = 0;
 
-with open('traindata.csv') as f:
+with open('train.csv') as f:
     f_csv = csv.reader(f)
     f_csv.next()
     for row in f_csv:
@@ -144,11 +151,17 @@ with open('traindata.csv') as f:
             #float(row[13]) or 1
             dailyData[midclass][0] = dailyData[midclass][0]+1
             totalCount=totalCount+1
-            totalPay=totalPay+float(row[14])
+            try:
+                totalPay=totalPay+float(row[14])
+            except:
+                pass
         else:
             dailyData[midclass] = [1, 0]
             totalCount=totalCount+1
-            totalPay=totalPay+float(row[14])
+            try:
+                totalPay=totalPay+float(row[14])
+            except:
+                pass
         if (row[16]!='\xb7\xf1'):
             dailyData[midclass][1] = 1
             if (midclass not in promotions):

@@ -9,12 +9,12 @@ import csv
 import pandas as pd
 from statsmodels.tsa.statespace.sarimax import SARIMAX  
 import datetime as dt
+import arimaPredicter
 
-dateToModify = [34, 44, 89, 98, 105]
-index = [dt.datetime(2015,1,x) for x in range(1, 32)]
-index = index + [dt.datetime(2015,2,x) for x in (range(1 ,29))]
-index = index + [dt.datetime(2015,3,x) for x in range(1, 32)]
-index = index + [dt.datetime(2015,4,x) for x in range(1, 31)]
+dateToModify = [34, 44, 89, 98, 105, 150, 211]
+
+ap = arimaPredicter.predicter()
+index = ap.createIndex(dt.datetime(2015,1,1), 243)
 
 def getData(csvReader, count):
     data = []
@@ -46,6 +46,8 @@ def modifyFile(reader, writer, count):
             continue       
         for i in dateToModify:
             label[i] = round(result.predict(i, i)[0])
+            if (label[i] < 0):
+                label[i] = 0
         for i in range(0, count):
             writer.writerow(data[i] + [label[i]])
             
@@ -53,7 +55,7 @@ f1 = open("data.csv", "r")
 reader = csv.reader(f1)
 f2 = open('datam.csv', 'wb')
 writer = csv.writer(f2)
-modifyFile(reader, writer, 120)
+modifyFile(reader, writer, 243)
 f1.close()
 f2.close()
 
@@ -61,7 +63,7 @@ f1 = open("lcdata.csv", "r")
 reader = csv.reader(f1)
 f2 = open('lcdatam.csv', 'wb')
 writer = csv.writer(f2)
-modifyFile(reader, writer, 120)
+modifyFile(reader, writer, 243)
 f1.close()
 f2.close()
 

@@ -10,6 +10,7 @@ from numpy import log
 from numpy import exp
 import math
 
+import datetime as dt
 import pandas as pd
 from statsmodels.tsa.statespace.sarimax import SARIMAX  
 import statsmodels.api as sm
@@ -26,6 +27,15 @@ class predicter():
         self.dtIndex = index[:]
         
     def getIndex(self):
+        return self.dtIndex
+    
+    def createIndex(self, date_from, length):
+        delta = dt.timedelta(days=1)
+        now = date_from
+        self.dtIndex = []
+        for i in range(0, length):
+            self.dtIndex.append(now)
+            now = now + delta
         return self.dtIndex
 
     def setPara(self, clas, para):

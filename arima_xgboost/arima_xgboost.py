@@ -15,12 +15,8 @@ import csv
 import math
 import datetime as dt
 
-dtIndex = [dt.datetime(2015,1,x) for x in range(1, 32)]
-dtIndex = dtIndex + [dt.datetime(2015,2,x) for x in (range(1, 29))]
-dtIndex = dtIndex + [dt.datetime(2015,3,x) for x in range(1, 32)]
-dtIndex = dtIndex + [dt.datetime(2015,4,x) for x in (range(1, 31))]
 ap = arimaPredicter.predicter()
-ap.setIndex(dtIndex)
+ap.createIndex(dt.datetime(2015,1,1), 243)
 
 modelChoose = {}
 
@@ -46,6 +42,35 @@ def simulateFeature(trainData, musk):
     for feature in trainData:
         for i in musk:
             feature[i] = 0
+            
+def createFeature(date_from, length, zeros, DictHoilday, DictBeforeHoilday, 
+                DictWorkday):
+    delta = dt.timedelta(days=1)
+    now = date_from
+    index = []
+    for i in range(0, length):
+        index.append(now)
+        now = now + delta
+    feature = []
+    empty = [0 for x in range(0, zeros+4)]
+    for i in range(0, length):
+        x = empty[:]
+        x[0] = index[i].day
+        x[1] = (index[i].weekday() + 1) % 7
+        dayCount = i + 1
+        if (dayCount in DictHoilday):
+            x[3] = 1
+        elif (dayCount in DictBeforeHoilday):
+            x[2] = 1
+        elif (dayCount in DictWorkday):
+            if (x[1]==6 or ((dayCount+1) in DictHoilday)):
+                x[2] = 1
+        elif (x[1]==0 or x[1]==6):
+            x[3] = 1
+        elif (x[1]==5):
+            x[2] = 1
+        feature.append(x)
+    return feature     
             
 def setModel(clas, model):
     global modelChoose
@@ -185,17 +210,11 @@ def submit(trainSize):
     loader = dataLoader.loader("datam.csv", "lcdatam.csv")
     loader.setSize(trainSize)
     
+    preDate = [x for x in range(0, 9)]+[x for x in range(10, 59)]
+    
     # middle class
-    goal = []
-    for i in range(1, 31):
-        x = [i, (i+4)%7, 0, 0, 0, 0]
-        if (x[1] == 6 or x[1]==0):
-            x[3] = 1
-        elif (x[1] == 5):
-            x[2] = 1
-        goal.append(x)
-    goal[0][3] = 1
-    goal[0][2] = 0
+    goal = createFeature(dt.datetime(2015,9,1), 59, 2,
+                         [273,274,275,276,277,278,279], [272], [281,282])
 
     while (True):
         midclass, trD, trL, teD, teL = loader.getNextMidClass()
@@ -205,17 +224,17 @@ def submit(trainSize):
             if (modelChoose[midclass] == 1):
                 try:
                     model = ap.sarimaTrain(midclass, trL)
-                    teP = ap.sarimaPredict(model, 30)
+                    teP = ap.sarimaPredict(model, 59)
                 except:
                     print("%d: failed to use arima, use xgboost instead" % midclass)
                     teP = xgboostPredict(array(trD), array(trL), array(goal))
             elif (modelChoose[midclass] == 2):
                 teP = xgboostPredict(array(trD), array(trL), array(goal))
             else:
-                teP = zeros(30)
+                teP = zeros(59)
             
-            for x in teP:
-                x_int = round(x)
+            for i in preDate:
+                x_int = round(teP[i])
                 if (x_int < 0):
                     x_int = 0
                 row = submit_csv.next()
@@ -231,16 +250,8 @@ def submit(trainSize):
                 larclasPred[larclass] = teP  
     
     # large class
-    goal = []
-    for i in range(1, 31):
-        x = [i, (i+4)%7, 0, 0, 0]
-        if (x[1] == 6 or x[1]==0):
-            x[3] = 1
-        elif (x[1] == 5):
-            x[2] = 1
-        goal.append(x)
-    goal[0][3] = 1
-    goal[0][2] = 0
+        goal = createFeature(dt.datetime(2015,9,1), 59, 1,
+                         [273,274,275,276,277,278,279], [272], [281,282])
 
     while (True):
         larclass, trD, trL, teD, teL = loader.getNextLarClass()
@@ -250,7 +261,7 @@ def submit(trainSize):
             if (modelChoose[larclass] == 1):
                 try:
                     model = ap.sarimaTrain(larclass, trL)
-                    teP = ap.sarimaPredict(model, 30)
+                    teP = ap.sarimaPredict(model, 59)
                 except:
                     print("%d: failed to use arima, use xgboost instead" % larclass)
                     teP = xgboostPredict(array(trD), array(trL), array(goal))
@@ -260,8 +271,8 @@ def submit(trainSize):
                 teP = larclasPred[larclass]
 
             # write file - midclass
-            for x in teP:
-                x_int = round(x)
+            for i in preDate:
+                x_int = round(teP[i])
                 if (x_int < 0):
                     x_int = 0
                 row = submit_csv.next()
@@ -273,5 +284,5 @@ def submit(trainSize):
     f2.close()
     loader.closeFiles()
            
-modelselect(75, 14, 31)
-submit(120)
+modelselect(200, 43, 0)
+submit(243)
