@@ -104,7 +104,7 @@ def modelselect(trainSize, testSize, skipSize = 0):
             # xgboost model
             simulateFeature(teD, [-2, -1])
             try:
-                teP2 = xgboostPredict(array(trD), array(trL), array(teD), {"objective":"reg:linear"})
+                teP2 = xgboostPredict(array(trD), array(trL), array(teD))
             except:
                 teP2 = zeros(testSize)
             
@@ -169,7 +169,10 @@ def modelselect(trainSize, testSize, skipSize = 0):
                 teP2 = zeros(testSize)
             
             # sum of midclasses
-            teP3 = larclasPred[larclass]
+            try:
+                teP3 = larclasPred[larclass]
+            except:
+                teP3 = zeros(testSize)
 
             # count bias of midclass and update larclass
             label = array(teL)
@@ -201,11 +204,12 @@ def modelselect(trainSize, testSize, skipSize = 0):
 def submit(trainSize): 
     global larclasPred
     larclasPred = {}
-    f1 = open("submit.csv", "r")
+    f1 = open("example.csv", "r")
     submit_csv = csv.reader(f1)
-    submit_csv.next()
-    f2 = open('submit1.csv', 'wb')
+    row = submit_csv.next()
+    f2 = open('submit.csv', 'wb')
     writer = csv.writer(f2)
+    writer.writerow(row)
     
     loader = dataLoader.loader("datam.csv", "lcdatam.csv")
     loader.setSize(trainSize)
@@ -214,7 +218,7 @@ def submit(trainSize):
     
     # middle class
     goal = createFeature(dt.datetime(2015,9,1), 59, 2,
-                         [273,274,275,276,277,278,279], [272], [281,282])
+                         range(31, 38), [30], [39, 40])
 
     while (True):
         midclass, trD, trL, teD, teL = loader.getNextMidClass()
@@ -250,8 +254,8 @@ def submit(trainSize):
                 larclasPred[larclass] = teP  
     
     # large class
-        goal = createFeature(dt.datetime(2015,9,1), 59, 1,
-                         [273,274,275,276,277,278,279], [272], [281,282])
+    goal = createFeature(dt.datetime(2015,9,1), 59, 1,
+                         range(31, 38), [30], [39, 40])
 
     while (True):
         larclass, trD, trL, teD, teL = loader.getNextLarClass()
@@ -268,7 +272,10 @@ def submit(trainSize):
             elif (modelChoose[larclass] == 2):
                 teP = xgboostPredict(array(trD), array(trL), array(goal))
             else:
-                teP = larclasPred[larclass]
+                try:
+                    teP = larclasPred[larclass]
+                except:
+                    teP = zeros(59)
 
             # write file - midclass
             for i in preDate:
