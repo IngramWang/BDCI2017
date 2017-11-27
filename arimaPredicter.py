@@ -82,14 +82,14 @@ class predicter():
         plt.show(block=False)
     
     def sarimaTrain(self, classNo, trainLabel, testLabel=[]):
-        dataLength = trainLabel.__len__()
+        dataLength = len(trainLabel)
         data = pd.Series(trainLabel)
         for i in range(0, dataLength):
             data[i] = log(data[i] + 1)
         index = self.dtIndex[0:dataLength]
         data.index = pd.Index(index)
         
-        if (testLabel.__len__() == 0):
+        if (len(testLabel) == 0):
             try:
                 (ar, ma) = self.ParaChoose[classNo]
             except KeyError:
@@ -104,10 +104,10 @@ class predicter():
             for p, q in [(1, 1), (0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]:
                 try:
                     model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
-                    output = array(model.forecast(testLabel.__len__()))       
+                    output = array(model.forecast(len(testLabel)))       
                     for i in range(0, len(testLabel)):
                         output[i] = exp(output[i]) - 1
-                    bias = math.sqrt(sum((output-label)*(output-label))/testLabel.__len__())
+                    bias = math.sqrt(sum((output-label)*(output-label))/len(testLabel))
                     if (bias < minBias and model.aic < minAic):
                         (ar, ma) = (p, q)
                         minBias = bias
@@ -120,9 +120,39 @@ class predicter():
                 return bestModel
             else:
                 raise ValueError
+                
+    def sarimaTrainWithoutAIC(self, classNo, trainLabel, testLabel):
+        dataLength = len(trainLabel)
+        data = pd.Series(trainLabel)
+        for i in range(0, dataLength):
+            data[i] = log(data[i] + 1)
+        index = self.dtIndex[0:dataLength]
+        data.index = pd.Index(index)
+        
+        minBias = 99999.0
+        (ar, ma) = (0, 0)
+        label = array(testLabel)
+        for p, q in [(1, 1), (0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]:
+            try:
+                model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
+                output = array(model.forecast(len(testLabel)))       
+                for i in range(0, len(testLabel)):
+                    output[i] = exp(output[i]) - 1
+                bias = math.sqrt(sum((output-label)*(output-label))/len(testLabel))
+                if (bias < minBias):
+                    (ar, ma) = (p, q)
+                    minBias = bias
+                    bestModel = model
+            except:
+                pass
+        if (minBias < 90000.0):
+            self.ParaChoose[classNo] = (ar, ma)
+            return bestModel
+        else:
+            raise ValueError
 
     def checkBias(self, model, trainLabel):
-        dataLength = trainLabel.__len__()
+        dataLength = len(trainLabel)
         data = pd.Series(trainLabel)
         index = self.dtIndex[0:dataLength]
         data.index = pd.Index(index)
