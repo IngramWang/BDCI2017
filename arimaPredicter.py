@@ -121,12 +121,6 @@ class predicter():
             else:
                 raise ValueError
 
-    def sarimaPredict(self, model, predictLength):
-        output = model.forecast(predictLength)
-        for i in range(0, predictLength):
-            output[i] = exp(output[i]) - 1
-        return array(output)
-
     def checkBias(self, model, trainLabel):
         dataLength = trainLabel.__len__()
         data = pd.Series(trainLabel)
@@ -138,3 +132,10 @@ class predicter():
         plt.plot(pred, color='red', label='Predicted')
         plt.show(block=False)
         return list(data - pred)
+    
+    @staticmethod
+    def sarimaPredict(model, predictLength):
+        output = model.forecast(predictLength)
+        for i in range(0, predictLength):
+            output[i] = exp(output[i]) - 1
+        return array(output)

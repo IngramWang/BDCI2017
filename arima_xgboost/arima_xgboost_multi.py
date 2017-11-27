@@ -5,9 +5,9 @@ Spyder Editor
 This is a temporary script file.
 """
 
-import xgboost as xgb
 import arimaPredicter
 import dataLoader
+import xgboostPredicter
 
 from numpy import array
 from numpy import zeros
@@ -15,8 +15,13 @@ import csv
 import math
 import datetime as dt
 
-ap = arimaPredicter.predicter()
-ap.createIndex(dt.datetime(2015,1,1), 243)
+aps = []
+for i in range(0, 3):
+    ap = arimaPredicter.predicter()
+    ap.createIndex(dt.datetime(2015,1,1), 243)
+    aps.append(ap)
+
+xgp = xgboostPredicter.predicter()
 
 modelChoose = {}
 
@@ -30,56 +35,16 @@ def dataLog(midclass, accuracy, trainLabl, testPred, testLabl):
             count += 1
         for x in range(0, len(testPred)):
             writer.writerow([count, testLabl[x], testPred[x]])
-            count += 1
-
-def xgboostPredict(trainData, trainLabel, dataToPredict, 
-                   params = {"objective":"reg:linear", "max_depth":1, "gamma":2}):
-    dtrain = xgb.DMatrix(trainData, trainLabel)
-    gbm = xgb.train(dtrain=dtrain, params=params)
-    return gbm.predict(xgb.DMatrix(dataToPredict))
-
-def simulateFeature(trainData, musk):
-    for feature in trainData:
-        for i in musk:
-            feature[i] = 0
-            
-def createFeature(date_from, length, zeros, DictHoilday, DictBeforeHoilday, 
-                DictWorkday):
-    delta = dt.timedelta(days=1)
-    now = date_from
-    index = []
-    for i in range(0, length):
-        index.append(now)
-        now = now + delta
-    feature = []
-    empty = [0 for x in range(0, zeros+4)]
-    for i in range(0, length):
-        x = empty[:]
-        x[0] = index[i].day
-        x[1] = (index[i].weekday() + 1) % 7
-        dayCount = i + 1
-        if (dayCount in DictHoilday):
-            x[3] = 1
-        elif (dayCount in DictBeforeHoilday):
-            x[2] = 1
-        elif (dayCount in DictWorkday):
-            if (x[1]==6 or ((dayCount+1) in DictHoilday)):
-                x[2] = 1
-        elif (x[1]==0 or x[1]==6):
-            x[3] = 1
-        elif (x[1]==5):
-            x[2] = 1
-        feature.append(x)
-    return feature     
+            count += 1  
             
 def setModel(clas, model):
     global modelChoose
     if (clas not in modelChoose):
-        modelChoose[clas] = model
+        modelChoose[clas] = [model]
     elif (model < modelChoose[clas]):
-        modelChoose[clas] = model   
+        modelChoose[clas].append(model)   
     
-def modelselect(trainSize, testSize, skipSize = 0):
+def modelselect(ap, trainSize, testSize, skipSize = 0):
     larclasPred = {}
     totalBias = 0
     totalCount = 0
@@ -102,9 +67,10 @@ def modelselect(trainSize, testSize, skipSize = 0):
                 teP1 = zeros(testSize)
             
             # xgboost model
-            simulateFeature(teD, [-2, -1])
+            xgp.simulateFeature(teD, [-2, -1])
             try:
-                teP2 = xgboostPredict(array(trD), array(trL), array(teD))
+                model = xgp.xgboostTrain(trD, trL)
+                teP2 = xgp.xgboostPredict(model, teD)
             except:
                 teP2 = zeros(testSize)
             
@@ -162,9 +128,10 @@ def modelselect(trainSize, testSize, skipSize = 0):
                 teP1 = zeros(testSize)
             
             # xgboost model
-            simulateFeature(teD, [-2, -1])
+            xgp.simulateFeature(teD, [-2, -1])
             try:
-                teP2 = xgboostPredict(array(trD), array(trL), array(teD))
+                model = xgp.xgboostTrain(trD, trL)
+                teP2 = xgp.xgboostPredict(model, teD)
             except:
                 teP2 = zeros(testSize)
             
@@ -201,7 +168,7 @@ def modelselect(trainSize, testSize, skipSize = 0):
     print "(Predict finished, accuracy: %f)" % (totalBias)        
     loader.closeFiles()
     
-def submit(trainSize): 
+def submit(trainSize, cvSize): 
     global larclasPred
     larclasPred = {}
     f1 = open("example.csv", "r")
@@ -217,7 +184,7 @@ def submit(trainSize):
     preDate = range(0, 9) + range(10, 59)
     
     # middle class
-    goal = createFeature(dt.datetime(2015,9,1), 59, 2,
+    goal = xgp.createFeature(dt.datetime(2015,9,1), 59, 2,
                          range(31, 38), [30], [39, 40])
 
     while (True):
@@ -225,17 +192,26 @@ def submit(trainSize):
         if (midclass == 0):
             break
         else:
-            if (modelChoose[midclass] == 1):
-                try:
-                    model = ap.sarimaTrain(midclass, trL)
-                    teP = ap.sarimaPredict(model, 59)
-                except:
-                    print("%d: failed to use arima, use xgboost instead" % midclass)
-                    teP = xgboostPredict(array(trD), array(trL), array(goal))
-            elif (modelChoose[midclass] == 2):
-                teP = xgboostPredict(array(trD), array(trL), array(goal))
+            teP = zeros(59)
+            count = 3
+            for i in range(0, cvSize):
+                if (modelChoose[midclass][i] == 1):
+                    try:
+                        model = aps[i].sarimaTrain(midclass, trL)
+                        teP += aps[i].sarimaPredict(model, 59)
+                    except:
+                        print("%d: failed to use arima" % midclass)
+                        count -= 1
+                elif (modelChoose[midclass][i] == 2):
+                    model = xgp.xgboostTrain(trD, trL)
+                    teP += xgp.xgboostPredict(model, goal)
+                    
+            if (count == 0):
+                print("%d: failed to use arima at all, only use xgboost" % midclass)
+                model = xgp.xgboostTrain(trD, trL)
+                teP = xgp.xgboostPredict(model, goal)
             else:
-                teP = zeros(59)
+                teP = teP / count
             
             for i in preDate:
                 x_int = round(teP[i])
@@ -254,28 +230,36 @@ def submit(trainSize):
                 larclasPred[larclass] = teP  
     
     # large class
-    goal = createFeature(dt.datetime(2015,9,1), 59, 1,
+    goal = xgp.createFeature(dt.datetime(2015,9,1), 59, 1,
                          range(31, 38), [30], [39, 40])
 
     while (True):
         larclass, trD, trL, teD, teL = loader.getNextLarClass()
         if (larclass == 0):
             break
-        else:
-            if (modelChoose[larclass] == 1):
-                try:
-                    model = ap.sarimaTrain(larclass, trL)
-                    teP = ap.sarimaPredict(model, 59)
-                except:
-                    print("%d: failed to use arima, use xgboost instead" % larclass)
-                    teP = xgboostPredict(array(trD), array(trL), array(goal))
-            elif (modelChoose[larclass] == 2):
-                teP = xgboostPredict(array(trD), array(trL), array(goal))
+        else:           
+            teP = zeros(59)
+            count = 3
+            for i in range(0, cvSize):
+                if (modelChoose[larclass][i] == 1):
+                    try:
+                        model = aps[i].sarimaTrain(larclass, trL)
+                        teP += aps[i].sarimaPredict(model, 59)
+                    except:
+                        print("%d: failed to use arima" % larclass)
+                        count -= 1
+                elif (modelChoose[larclass][i] == 2):
+                    model = xgp.xgboostTrain(trD, trL)
+                    teP += xgp.xgboostPredict(model, goal)
+                elif (larclass in larclasPred):
+                    teP += larclasPred[larclass]
+                    
+            if (count == 0):
+                print("%d: failed to use arima at all, only use xgboost" % larclass)
+                model = xgp.xgboostTrain(trD, trL)
+                teP = xgp.xgboostPredict(model, goal)
             else:
-                try:
-                    teP = larclasPred[larclass]
-                except:
-                    teP = zeros(59)
+                teP = teP / count
 
             # write file - midclass
             for i in preDate:
@@ -291,6 +275,7 @@ def submit(trainSize):
     f2.close()
     loader.closeFiles()
            
-modelselect(200, 43, 0)
-para = ap.getPara()
-submit(243)
+modelselect(aps[0], 210, 28, 5)
+modelselect(aps[1], 180, 28, 35)
+modelselect(aps[2], 150, 28, 65)
+submit(243, 3)
