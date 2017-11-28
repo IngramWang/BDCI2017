@@ -48,8 +48,7 @@ def trainAndCompare(ap, clas, trD, trL, teD, teL, teP3):
     testSize = len(teL)
     # sarima model
     try:
-        model = ap.sarimaTrain(clas, trL, teL)
-        teP1 = ap.sarimaPredict(model, testSize)
+        (_, teP1) = ap.sarimaParaSelect(clas, trL, teL, True)
     except:
         teP1 = zeros(testSize)
             
@@ -94,7 +93,7 @@ def modelselect(ap, trainSize, testSize, skipSize = 0):
             larclass = int(midclass/100)
             totalCount += testSize
             totalBias += bias
-            print "(Midclass %d select model %d, accuracy: %f)" % (midclass, model, bias)
+            print("(Midclass %d select model %d, accuracy: %f)" % (midclass, model, bias))
             setModel(midclass, model)
             if (larclass in larclasPred):
                 larclasPred[larclass] += teP
@@ -114,11 +113,11 @@ def modelselect(ap, trainSize, testSize, skipSize = 0):
 
             totalCount += testSize            
             totalBias += bias
-            print "(Larclass %d select model %d, accuracy: %f)" % (larclass, model, bias)
+            print("(Larclass %d select model %d, accuracy: %f)" % (larclass, model, bias))
             setModel(larclass, model)
 
     totalBias = math.sqrt(totalBias/totalCount)
-    print "(Predict finished, accuracy: %f)" % (totalBias)        
+    print("(Predict finished, accuracy: %f)" % (totalBias))       
     loader.closeFiles()
     
 def writeClass(clas, result, dates, checker, writer):
@@ -137,7 +136,7 @@ def predictClass(clas, cvSize, trD, trL, teD, teP3):
     for i in range(0, cvSize):
         if (modelChoose[clas][i] == 1):
             try:
-                model = aps[i].sarimaTrain(clas, trL)
+                model = aps[i].sarimaTrain(trL, clas)
                 teP += aps[i].sarimaPredict(model, 59)
             except:
                 print("%d: failed to use arima" % clas)

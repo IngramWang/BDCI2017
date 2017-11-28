@@ -81,7 +81,7 @@ class predicter():
         fig = sm.graphics.tsa.plot_pacf(timeseries, lags=20, ax=ax2)
         plt.show(block=False)
     
-    def sarimaTrain(self, classNo, trainLabel, testLabel=[]):
+    def sarimaTrain(self, trainLabel, classNo=0, para=()):
         dataLength = len(trainLabel)
         data = pd.Series(trainLabel)
         for i in range(0, dataLength):
@@ -89,39 +89,17 @@ class predicter():
         index = self.dtIndex[0:dataLength]
         data.index = pd.Index(index)
         
-        if (len(testLabel) == 0):
+        if (len(para) != 2):
             try:
                 (ar, ma) = self.ParaChoose[classNo]
             except KeyError:
-                print("%d: no pre-trained parameter, use (1,1) default" % classNo)
+                print("%d: parameter not set, use (1,1) default" % classNo)
                 (ar, ma) = (1, 1)
             return SARIMAX(data, order=(ar,1,ma), seasonal_order=(0,1,1,7)).fit()
         else:
-            minBias = 99999.0
-            minAic = 99999.0
-            (ar, ma) = (0, 0)
-            label = array(testLabel)
-            for p, q in [(1, 1), (0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]:
-                try:
-                    model = SARIMAX(data, order=(p,1,q), seasonal_order=(0,1,1,7)).fit()
-                    output = array(model.forecast(len(testLabel)))       
-                    for i in range(0, len(testLabel)):
-                        output[i] = exp(output[i]) - 1
-                    bias = math.sqrt(sum((output-label)*(output-label))/len(testLabel))
-                    if (bias < minBias and model.aic < minAic):
-                        (ar, ma) = (p, q)
-                        minBias = bias
-                        minAic = model.aic
-                        bestModel = model
-                except:
-                    pass
-            if (minBias < 90000.0):
-                self.ParaChoose[classNo] = (ar, ma)
-                return bestModel
-            else:
-                raise ValueError
+            return SARIMAX(data, order=(para[0], 1, para[1]), seasonal_order=(0,1,1,7)).fit()
                 
-    def sarimaTrainWithoutAIC(self, classNo, trainLabel, testLabel):
+    def sarimaParaSelect(self, classNo, trainLabel, testLabel, useAic=False):
         dataLength = len(trainLabel)
         data = pd.Series(trainLabel)
         for i in range(0, dataLength):
@@ -130,6 +108,7 @@ class predicter():
         data.index = pd.Index(index)
         
         minBias = 99999.0
+        minAic = 99999.0
         (ar, ma) = (0, 0)
         label = array(testLabel)
         for p, q in [(1, 1), (0, 1), (1, 2), (2, 0), (2, 1), (2, 2)]:
@@ -139,15 +118,17 @@ class predicter():
                 for i in range(0, len(testLabel)):
                     output[i] = exp(output[i]) - 1
                 bias = math.sqrt(sum((output-label)*(output-label))/len(testLabel))
-                if (bias < minBias):
+                if (bias < minBias and (useAic == False or model.aic < minAic)):
                     (ar, ma) = (p, q)
                     minBias = bias
-                    bestModel = model
+                    minAic = model.aic
+                    bestOutput = output
             except:
                 pass
+            
         if (minBias < 90000.0):
             self.ParaChoose[classNo] = (ar, ma)
-            return bestModel
+            return ((ar, ma), bestOutput)
         else:
             raise ValueError
 
