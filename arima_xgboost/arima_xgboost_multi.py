@@ -48,7 +48,7 @@ def trainAndCompare(ap, clas, trD, trL, teD, teL, teP3):
     testSize = len(teL)
     # sarima model
     try:
-        (_, teP1) = ap.sarimaParaSelect(clas, trL, teL, True)
+        (_, teP1) = ap.sarimaParaSelect(clas, trL, teL)
     except:
         teP1 = zeros(testSize)
             
@@ -65,13 +65,10 @@ def trainAndCompare(ap, clas, trD, trL, teD, teL, teP3):
     bias2 = sum((teP2-label)*(teP2-label))
     bias3 = sum((teP3-label)*(teP3-label))
     if (bias3 <= bias1 and bias3 <= bias2):
-        bias3 = math.sqrt(bias3/testSize)
         return (3, bias3, teP3)
     elif (bias1 <= bias2):
-        bias1 = math.sqrt(bias1/testSize)
         return (1, bias1, teP1)
     else:
-        bias2 = math.sqrt(bias2/testSize)
         return (2, bias2, teP2)
     
 def modelselect(ap, trainSize, testSize, skipSize = 0):
@@ -93,6 +90,7 @@ def modelselect(ap, trainSize, testSize, skipSize = 0):
             larclass = int(midclass/100)
             totalCount += testSize
             totalBias += bias
+            bias = math.sqrt(bias/testSize)
             print("(Midclass %d select model %d, accuracy: %f)" % (midclass, model, bias))
             setModel(midclass, model)
             if (larclass in larclasPred):
@@ -113,6 +111,7 @@ def modelselect(ap, trainSize, testSize, skipSize = 0):
 
             totalCount += testSize            
             totalBias += bias
+            bias = math.sqrt(bias/testSize)
             print("(Larclass %d select model %d, accuracy: %f)" % (larclass, model, bias))
             setModel(larclass, model)
 
